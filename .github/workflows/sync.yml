@@ -3,7 +3,7 @@ name: Sync ESPN Data
 on:
   schedule:
     # Every hour, on the hour (UTC). Adjust as you like -- e.g. "*/30 * * * *" for every 30 min.
-    - cron: "0 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
 
 permissions:
