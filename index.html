@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CFB26 Pool Tracker</title>
+<style>
+  :root{
+    --turf: #16331F;
+    --turf-dark: #0D2116;
+    --turf-light: #1F4229;
+    --chalk: #F4F1E6;
+    --chalk-dim: #C9C5B4;
+    --amber: #F2A93B;
+    --amber-dim: #B87F1F;
+    --crimson: #C1443B;
+    --steel: #7C8B85;
+    --line: rgba(244,241,230,0.14);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--turf);}
+  body{
+    font-family: "Helvetica Neue", Arial, sans-serif;
+    color: var(--chalk);
+    min-height:100vh;
+    background:
+      repeating-linear-gradient(0deg, var(--turf) 0px, var(--turf) 78px, var(--turf-light) 78px, var(--turf-light) 80px),
+      var(--turf);
+  }
+  .display{
+    font-family: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .mono{
+    font-family: "SF Mono","Courier New", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px;}
+
+  /* Header */
+  .scoreboard{
+    background: var(--turf-dark);
+    border: 3px solid var(--chalk-dim);
+    border-radius: 6px;
+    padding: 18px 22px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  .scoreboard::before{
+    content:"";
+    position:absolute; top:8px; left:8px; right:8px; bottom:8px;
+    border: 1px solid rgba(244,241,230,0.15);
+    border-radius: 3px;
+    pointer-events:none;
+  }
+  .sb-top{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;}
+  .sb-title{
+    font-size: clamp(28px, 5vw, 42px);
+    color: var(--amber);
+    text-shadow: 0 0 12px rgba(242,169,59,0.35);
+    line-height:1;
+  }
+  .sb-sub{
+    color: var(--chalk-dim);
+    font-size:12px;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    margin-top:4px;
+  }
+  .sb-week{
+    text-align:right;
+  }
+  .sb-week-label{font-size:10px; letter-spacing:0.18em; color:var(--steel); text-transform:uppercase;}
+  .sb-week-val{font-size:22px; color:var(--chalk);}
+
+  /* Nav */
+  .nav{
+    display:flex; gap:8px; margin:18px 0 16px; border-bottom: 2px solid var(--line); padding-bottom:0;
+  }
+  .nav button{
+    background:none; border:none; cursor:pointer;
+    font-family:inherit; color: var(--steel);
+    padding: 10px 4px; margin-right: 18px;
+    font-size:14px; letter-spacing:0.14em; text-transform:uppercase;
+    border-bottom: 3px solid transparent;
+  }
+  .nav button.active{ color: var(--amber); border-bottom-color: var(--amber); }
+  .nav button:hover{ color: var(--chalk); }
+
+  /* Standings */
+  .rank-row{
+    display:grid;
+    grid-template-columns: 34px 1fr auto;
+    align-items:center;
+    gap:14px;
+    padding:10px 0;
+    border-bottom: 1px solid var(--line);
+    cursor:pointer;
+  }
+  .rank-row:hover .track{ box-shadow: inset 0 0 0 1px rgba(242,169,59,0.4); }
+  .rank-num{
+    font-size:20px; color: var(--steel);
+  }
+  .rank-row:nth-child(1) .rank-num{ color: var(--amber); font-size:24px;}
+  .rank-name-row{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px;}
+  .rank-name{font-size:15px; letter-spacing:0.02em;}
+  .rank-score{font-size:18px; color: var(--amber);}
+  .track{
+    height: 8px;
+    background: rgba(0,0,0,0.35);
+    border-radius: 2px;
+    overflow:hidden;
+    position:relative;
+  }
+  .track-fill{
+    height:100%;
+    background: linear-gradient(90deg, var(--amber-dim), var(--amber));
+    border-radius: 2px;
+    transition: width 0.4s ease;
+  }
+  .yard-lines{
+    display:flex; justify-content:space-between;
+    font-size:9px; color: var(--steel); letter-spacing:0.08em;
+    margin-top:14px; padding-top:8px; border-top:1px dashed var(--line);
+  }
+
+  /* Person tabs (roster view) */
+  .jersey-row{
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;
+  }
+  .jersey{
+    background: var(--turf-dark);
+    border: 2px solid var(--line);
+    color: var(--chalk-dim);
+    border-radius: 4px;
+    padding: 7px 12px;
+    font-size:13px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:8px;
+  }
+  .jersey .num{
+    font-family: "SF Mono","Courier New", monospace;
+    background: var(--turf);
+    border-radius:3px; padding:1px 6px;
+    color: var(--steel); font-size:11px;
+  }
+  .jersey.active{ border-color: var(--amber); color: var(--chalk); }
+  .jersey.active .num{ color: var(--amber); }
+
+  /* Team cards */
+  .team-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap:12px;
+  }
+  .card{
+    background: var(--turf-dark);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px;
+  }
+  .card-head{
+    display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;
+    border-bottom: 1px solid var(--line); padding-bottom:8px;
+  }
+  .card-team{ font-size:16px; }
+  .card-round{ font-size:10px; color:var(--steel); letter-spacing:0.12em; text-transform:uppercase;}
+  .card-total{
+    font-size:20px; color: var(--amber); min-width:38px; text-align:right;
+  }
+  .card-total.neg{ color: var(--crimson); }
+  .stat-group{ margin-bottom:8px; }
+  .stat-group-label{
+    font-size:9px; color: var(--steel); letter-spacing:0.14em; text-transform:uppercase; margin-bottom:5px;
+  }
+  .stat-line{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:3px 0; font-size:12.5px; color: var(--chalk-dim);
+  }
+  .stat-line .pts{ font-size:10px; color:var(--steel); margin-left:6px;}
+  .stat-line label{display:flex; align-items:center; gap:7px; cursor:pointer; flex:1;}
+  input[type=checkbox]{
+    appearance:none; width:15px; height:15px; border:1.5px solid var(--steel);
+    border-radius:3px; background:var(--turf); cursor:pointer; position:relative; flex-shrink:0;
+  }
+  input[type=checkbox]:checked{ background: var(--amber); border-color: var(--amber); }
+  input[type=checkbox]:checked::after{
+    content:""; position:absolute; left:4px; top:0px; width:4px; height:8px;
+    border: solid var(--turf-dark); border-width:0 2px 2px 0; transform: rotate(45deg);
+  }
+  input[type=number]{
+    width:44px; background: var(--turf); border:1.5px solid var(--steel); border-radius:3px;
+    color: var(--chalk); font-family:inherit; font-size:12px; padding:2px 4px; text-align:center;
+  }
+  input[type=number]:focus, input[type=checkbox]:focus{ outline: 1.5px solid var(--amber); }
+  input:disabled, select:disabled{ opacity:0.35; cursor:not-allowed; }
+
+  /* Standings sub-tables: Weekly Standings, Weekly Winners, Money Owed */
+  .sub-table-wrap{ margin-top:22px; }
+  .sub-table-head{
+    font-size:14px; color: var(--amber); border-bottom: 1px solid var(--line);
+    padding-bottom:6px; margin-bottom:10px;
+  }
+  table.data-table{
+    width:100%; border-collapse:collapse; font-size:12.5px;
+  }
+  table.data-table th{
+    text-align:left; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color: var(--steel); padding:5px 8px; border-bottom: 1px solid var(--line);
+  }
+  table.data-table td{
+    padding:6px 8px; border-bottom: 1px solid var(--line); vertical-align:middle;
+  }
+  table.data-table tr:last-child td{ border-bottom:none; }
+  table.data-table td.num, table.data-table th.num{ text-align:right; font-family:"SF Mono","Courier New",monospace; }
+  .pos{ color: var(--amber); }
+  .neg-money{ color: var(--crimson); }
+
+  /* Schedule tab */
+  .week-tabs{
+    display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px;
+  }
+  .week-tab{
+    background: var(--turf-dark); border: 2px solid var(--line); color: var(--chalk-dim);
+    border-radius: 4px; padding: 6px 10px; font-size:12px; cursor:pointer;
+  }
+  .week-tab.active{ border-color: var(--amber); color: var(--chalk); }
+  .week-tab.has-data::after{ content:"\2022"; color: var(--amber); margin-left:5px; }
+  .sched-person{ margin-bottom:18px; }
+  .sched-person-head{
+    font-size:15px; color: var(--amber); border-bottom: 1px solid var(--line);
+    padding-bottom:5px; margin-bottom:8px;
+  }
+  .sched-row{
+    display:grid; grid-template-columns: 1fr 1fr auto; gap:8px; align-items:center;
+    padding:6px 0; border-bottom: 1px dotted var(--line);
+  }
+  .sched-team{ font-size:13px; color: var(--chalk); }
+  .sched-opp-input{
+    background: var(--turf); border:1.5px solid var(--steel); border-radius:3px;
+    color: var(--chalk); font-family:inherit; font-size:12px; padding:4px 6px; width:100%;
+  }
+  .sched-opp-input:focus{ outline: 1.5px solid var(--amber); }
+  .sched-badge{
+    font-size:9px; letter-spacing:0.06em; text-transform:uppercase; padding:3px 7px;
+    border-radius:3px; white-space:nowrap; text-align:center;
+  }
+  .sched-badge.matchup{ background: rgba(242,169,59,0.18); color: var(--amber); border:1px solid var(--amber-dim); }
+  .sched-badge.undrafted{ background: rgba(124,139,133,0.18); color: var(--steel); border:1px solid var(--steel); }
+  .sched-badge.self{ background: rgba(193,68,59,0.15); color: var(--crimson); border:1px solid var(--crimson); }
+  .sched-fcs-toggle{ display:flex; align-items:center; gap:4px; font-size:9px; color:var(--steel); cursor:pointer; white-space:nowrap; }
+  .sched-fcs-toggle input{ width:12px; height:12px; }
+  .sched-legend{
+    display:flex; flex-wrap:wrap; gap:14px; font-size:10px; color:var(--steel);
+    margin-bottom:14px; padding:8px 10px; background:var(--turf-dark); border-radius:4px; border:1px solid var(--line);
+  }
+  .sched-legend span{ display:flex; align-items:center; gap:5px; }
+  .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+  .footer-note{
+    margin-top:24px; font-size:11px; color: var(--steel); text-align:center; line-height:1.6;
+  }
+  .save-flash{
+    position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+    background: var(--amber); color: var(--turf-dark); font-size:12px; letter-spacing:0.08em;
+    padding:7px 14px; border-radius:4px; opacity:0; transition:opacity 0.3s ease; pointer-events:none;
+    text-transform:uppercase; font-weight:bold;
+  }
+  .save-flash.show{ opacity:0.95; }
+
+  @media (max-width:520px){
+    .team-grid{ grid-template-columns: 1fr; }
+    .sb-top{ flex-direction:column; }
+    .sb-week{ text-align:left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="scoreboard">
+    <div class="sb-top">
+      <div>
+        <div class="sb-title display">CFB26 Pool</div>
+        <div class="sb-sub">2026 Season &middot; 10 Coaches &middot; 14 Teams Each</div>
+      </div>
+      <div class="sb-week">
+        <div class="sb-week-label">League Leader</div>
+        <div class="sb-week-val mono" id="leaderReadout">&mdash;</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button class="display active" data-view="standings">Standings</button>
+    <button class="display" data-view="rosters">Rosters</button>
+    <button class="display" data-view="schedule">Schedule</button>
+    <button class="display" data-view="rules">Rules</button>
+  </div>
+
+  <div id="standingsView"></div>
+  <div id="rostersView" style="display:none;"></div>
+  <div id="scheduleView" style="display:none;"></div>
+  <div id="rulesView" style="display:none;"></div>
+
+  <div class="footer-note">Scores are saved automatically and shared with anyone using this app.</div>
+</div>
+
+<div class="save-flash" id="saveFlash">Saved</div>
+
+<script>
+const DRAFT = {
+  "Kneidel": ["Notre Dame","Kansas State","Penn State","Jacksonville State","Auburn","UCLA","Marshall","Kansas","Vanderbilt","South Alabama","Michigan State","Nevada","New Mexico State","UMass"],
+  "Karcher": ["Indiana","SMU","USC","Army","South Carolina","Arizona State","TCU","Maryland","Ohio","Colorado","Coastal Carolina","Boston College","San Jose State","Charlotte"],
+  "Greckel": ["Oregon","Michigan","Houston","Tennessee","Tulane","NC State","Florida","Nebraska","Wisconsin","UConn","North Texas","Rutgers","Missouri State","Charlotte"],
+  "DeFreese": ["Georgia","Louisville","Boise State","Pittsburgh","Oklahoma State","Virginia","Western Kentucky","Baylor","Buffalo","Louisiana Tech","Bowling Green","Ball State","Sacramento State","UMass"],
+  "Clack": ["Texas","Liberty","Utah","Air Force","Louisiana","Central Michigan","Florida State","Texas State","Troy","Wyoming","North Carolina","Utah State","Southern Miss","UTEP"],
+  "Eber": ["Miami","Alabama","South Florida","Miami (OH)","Toledo","Hawaii","Old Dominion","FIU","Wake Forest","UCF","FAU","Arkansas","UAB","Rice"],
+  "Williamson": ["Ohio State","LSU","Oklahoma","Memphis","UNLV","Illinois","Delaware","Arkansas State","West Virginia","Cincinnati","Eastern Michigan","Mississippi State","Sam Houston State","Louisiana-Monroe"],
+  "Stubel": ["Texas Tech","Ole Miss","Iowa","UTSA","Washington","Missouri","San Diego St","Fresno State","Kentucky","Temple","Akron","Georgia State","Colorado State","Northern Illinois"],
+  "Olvaney": ["BYU","Texas A&M","California","Clemson","Arizona","Georgia Tech","Virginia Tech","Minnesota","Syracuse","Tulsa","Northwestern","Oregon State","Stanford","Kent State"],
+  "Henley": ["North Dakota State","James Madison","Western Michigan","Navy","East Carolina","New Mexico","Kennesaw State","Appalachian State","Duke","Georgia Southern","Iowa State","Washington State","Middle Tennessee","Purdue"]
+};
+const PEOPLE = Object.keys(DRAFT);
+
+// Field definitions: key, label, points per unit, type (bool|count), group
+const FIELD_GROUPS = [
+  { label: "Regular Season", fields: [
+    { key:"hcFired", label:"HC fired in-season", pts:-1, type:"bool" },
+  ]},
+  { label:"End of Regular Season", fields:[
+    { key:"bowlEligible", label:"Bowl eligible (6+ wins)", pts:2, type:"bool" },
+    { key:"bowlAppearance", label:"Bowl appearance", pts:1, type:"bool" },
+    { key:"heisman", label:"Heisman winner", pts:1, type:"bool" },
+  ]},
+  { label:"Championship Games", fields:[
+    { key:"p4ChampAppear", label:"P4 champ game appearance", pts:1, type:"bool" },
+    { key:"p4ChampWin", label:"P4 champ game win", pts:2, type:"bool" },
+    { key:"g5ChampAppear", label:"G5 champ game appearance", pts:2, type:"bool" },
+    { key:"g5ChampWin", label:"G5 champ game win", pts:3, type:"bool" },
+  ]},
+  { label:"Bowls / Playoff", fields:[
+    { key:"nonPlayoffBowlWin", label:"Non-playoff bowl win", pts:2, type:"bool" },
+    { key:"cfpAppearance", label:"CFP appearance (12)", pts:1, type:"bool" },
+    { key:"cfpBye", label:"CFP bye (4)", pts:1, type:"bool" },
+    { key:"cfpSemi", label:"CFP semifinal appearance", pts:1, type:"bool" },
+    { key:"cfpWins", label:"CFP wins", pts:2, type:"count" },
+    { key:"natChampAppear", label:"National champ game appearance", pts:1, type:"bool" },
+    { key:"cfpNattyWin", label:"CFP National Championship win", pts:3, type:"bool" },
+  ]},
+];
+const ALL_FIELDS = FIELD_GROUPS.flatMap(g=>g.fields);
+
+const WEEKS = ["Week 0","Week 1","Week 2","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","Week 12","Week 13","Week 14","Week 15","Postseason"];
+
+let state = {}; // state[person][teamIndex] = { key: value }  -- Commissioner-entered bonus fields, loaded from data/manual.json
+let schedState = {}; // schedState[person][teamIndex][weekIdx] = { opp, fcs, status, score }  -- loaded from data/schedule.json, auto-synced hourly by GitHub Actions
+let scheduleUpdatedAt = null; // timestamp string from data/schedule.json, shown in the UI
+let currentView = "standings";
+let currentPerson = PEOPLE[0];
+let currentWeek = 0;
+let weeklyStandingsWeek = 0; // independent week selector for the Weekly Standings table on the Standings tab
+
+// Commissioner gate for the Rosters tab. Change this PIN to whatever you like.
+const COMMISSIONER_PIN = "gridiron26";
+let commissionerUnlocked = false;
+
+// Map of lowercase team name -> [{person, idx}] for every drafted team (handles duplicates like Charlotte/UMass)
+let teamOwners = {};
+function buildTeamOwners(){
+  teamOwners = {};
+  PEOPLE.forEach(p=>{
+    DRAFT[p].forEach((team, i)=>{
+      const key = normalizeTeamName(team);
+      if(!teamOwners[key]) teamOwners[key] = [];
+      teamOwners[key].push({ person:p, idx:i });
+    });
+  });
+}
+
+// Aliases: normalized ESPN name -> normalized draft-sheet name
+const NAME_ALIASES = {
+  "massachusetts":"umass",
+  "mississippi":"ole miss",
+  "ul monroe":"louisiana-monroe",
+  "louisiana monroe":"louisiana-monroe",
+  "louisiana-lafayette":"louisiana",
+  "pitt":"pittsburgh",
+  "connecticut":"uconn",
+  "nevada-las vegas":"unlv",
+  "nevada las vegas":"unlv",
+  "florida international":"fiu",
+  "florida atlantic":"fau",
+  "brigham young":"byu",
+  "southern methodist":"smu",
+  "texas christian":"tcu",
+  "southern california":"usc",
+  "texas-el paso":"utep",
+  "texas el paso":"utep",
+  "texas-san antonio":"utsa",
+  "texas san antonio":"utsa",
+  "san jose st":"san jose state",
+  "hawaii":"hawaii",
+  "app state":"appalachian state",
+  "sam houston":"sam houston state",
+  "kennesaw st":"kennesaw state",
+  // "Western KY" style region+postal-code shorthands and common acronyms --
+  // only added where the short form is unambiguous within this pool (see the
+  // Commissioner notes for the handful of acronyms that collide and can't be aliased).
+  "western ky":"western kentucky",
+  "wku":"western kentucky",
+  "western mi":"western michigan",
+  "wmu":"western michigan",
+  "eastern mi":"eastern michigan",
+  "emu":"eastern michigan",
+  "central mi":"central michigan",
+  "cmu":"central michigan",
+  "niu":"northern illinois",
+  "n texas":"north texas",
+  "unt":"north texas",
+  "s florida":"south florida",
+  "usf":"south florida",
+  "s alabama":"south alabama",
+  "new mexico st":"new mexico state",
+  "nmsu":"new mexico state",
+  "middle tn":"middle tennessee",
+  "mtsu":"middle tennessee",
+  "middle tennessee state":"middle tennessee",
+  "ga tech":"georgia tech",
+  "gt":"georgia tech",
+  "boise st":"boise state",
+  "fresno st":"fresno state",
+  "colorado st":"colorado state",
+  "csu":"colorado state",
+  "iowa st":"iowa state",
+  "utah st":"utah state",
+  "usu":"utah state",
+  "texas st":"texas state",
+  "missouri st":"missouri state",
+  "jacksonville st":"jacksonville state",
+  "jax state":"jacksonville state",
+  "kansas st":"kansas state",
+  "k-state":"kansas state",
+  "penn st":"penn state",
+  "psu":"penn state",
+  "arkansas st":"arkansas state",
+  "wvu":"west virginia",
+  "va tech":"virginia tech",
+  "vt":"virginia tech",
+  "tamu":"texas a&m",
+  "texas am":"texas a&m",
+  "ttu":"texas tech",
+  "la tech":"louisiana tech",
+  "miami-oh":"miami (oh)",
+  "miami ohio":"miami (oh)",
+  "m-oh":"miami (oh)",
+  "north carolina state":"nc state",
+  "bc":"boston college",
+  "bgsu":"bowling green",
+  "odu":"old dominion",
+  "coastal caro":"coastal carolina",
+  "ecu":"east carolina",
+  "jmu":"james madison",
+  // Round 2 of "X St" / directional-letter shorthands, confirmed from actual ESPN sync output.
+  "florida st":"florida state",
+  "w michigan":"western michigan",
+  "oregon st":"oregon state",
+  "miami oh":"miami (oh)",
+  "michigan st":"michigan state",
+  "coastal":"coastal carolina",
+  "mississippi st":"mississippi state",
+  "n illinois":"northern illinois",
+  "washington st":"washington state",
+  "oklahoma st":"oklahoma state",
+  "c michigan":"central michigan",
+  // Same two patterns, audited across the rest of the roster for teams not yet covered.
+  "arizona st":"arizona state",
+  "ohio st":"ohio state",
+  "georgia st":"georgia state",
+  "kent st":"kent state",
+  "appalachian st":"appalachian state",
+  "ga southern":"georgia southern",
+  "w kentucky":"western kentucky",
+  "e michigan":"eastern michigan",
+  // Our own roster stores this one already abbreviated -- map ESPN's full form back to it.
+  "san diego state":"san diego st",
+  // North Dakota State is FBS (Mountain West, football-only) -- not FCS.
+  "n dakota st":"north dakota state",
+  "north dakota st":"north dakota state",
+  "ndsu":"north dakota state",
+  // Found by sweeping every drafted team for the same "X St" / directional-letter pattern.
+  "nc st":"nc state",
+  "ball st":"ball state",
+  "sacramento st":"sacramento state",
+  "s miss":"southern miss",
+  "sam houston st":"sam houston state",
+};
+
+function normalizeTeamName(s){
+  let n = (s||"").toLowerCase().trim();
+  n = n.normalize("NFD").replace(/[\u0300-\u036f]/g,""); // strip accents, e.g. "San José" -> "San Jose"
+  n = n.replace(/[.']/g,"");
+  n = n.replace(/\s+/g," ").trim();
+  if(NAME_ALIASES[n]) n = NAME_ALIASES[n];
+  return n;
+}
+
+// Wins / FCS-losses derived from completed games in schedState -- Rule: 1 pt per win, -1 pt per loss to an FCS opponent.
+function getAutoRecord(person, idx){
+  let wins = 0, fcsLoss = 0, otherLoss = 0;
+  const weeks = schedState[person] && schedState[person][idx];
+  if(!weeks) return { wins, fcsLoss, otherLoss };
+  weeks.forEach(slot=>{
+    if(slot.status === "Final" && slot.score){
+      const parts = slot.score.split('-').map(Number);
+      if(parts.length===2 && !isNaN(parts[0]) && !isNaN(parts[1]) && parts[0]!==parts[1]){
+        if(parts[0] > parts[1]) wins++;
+        else if(slot.fcs) fcsLoss++;
+        else otherLoss++;
+      }
+    }
+  });
+  return { wins, fcsLoss, otherLoss };
+}
+
+// Points a single game is worth per the Wins/FCS-loss rule -- +1 win, -1 loss to FCS, 0 for
+// any other loss, or null when the game isn't final yet (nothing to score).
+function slotPoints(slot){
+  if(slot.status !== "Final" || !slot.score) return null;
+  const parts = slot.score.split('-').map(Number);
+  if(parts.length!==2 || isNaN(parts[0]) || isNaN(parts[1]) || parts[0]===parts[1]) return null;
+  if(parts[0] > parts[1]) return 1;
+  return slot.fcs ? -1 : 0;
+}
+
+function emptyTeamStats(){
+  const o = {};
+  ALL_FIELDS.forEach(f=>{ o[f.key] = f.type==="bool" ? false : 0; });
+  return o;
+}
+
+function ensureState(){
+  PEOPLE.forEach(p=>{
+    if(!state[p]) state[p] = {};
+    DRAFT[p].forEach((team, i)=>{
+      if(!state[p][i]) state[p][i] = emptyTeamStats();
+    });
+  });
+}
+
+function ensureSchedState(){
+  const blank = () => ({ opp:"", fcs:false, status:"", score:"" });
+  PEOPLE.forEach(p=>{
+    if(!schedState[p]) schedState[p] = {};
+    DRAFT[p].forEach((team, i)=>{
+      const arr = schedState[p][i];
+      if(!arr){
+        schedState[p][i] = WEEKS.map(blank);
+      } else if(arr.length === WEEKS.length - 1){
+        // Migrating from before the Week 0 / Week 1 split, where ESPN's merged "week=1" bucket
+        // covered both the Aug 29 openers and the true Week 1 games and could silently drop
+        // one of a team's two games. Insert a blank Week 0, and also clear the old Week 1 slot
+        // so both re-sync cleanly against the new date-based ranges rather than keeping
+        // whichever of the two games happened to survive the old overwrite.
+        schedState[p][i] = [blank(), blank(), ...arr.slice(1)];
+      } else if(arr.length < WEEKS.length){
+        while(arr.length < WEEKS.length) arr.push(blank());
+      }
+    });
+  });
+}
+
+function teamScore(person, idx){
+  const stats = state[person][idx];
+  let total = 0;
+  ALL_FIELDS.forEach(f=>{
+    const v = stats[f.key];
+    if(f.type==="bool"){ if(v) total += f.pts; }
+    else { total += (Number(v)||0) * f.pts; }
+  });
+  const auto = getAutoRecord(person, idx);
+  total += auto.wins * 1;
+  total += auto.fcsLoss * -1;
+  return total;
+}
+
+function personScore(person){
+  let total = 0;
+  DRAFT[person].forEach((team,i)=>{ total += teamScore(person, i); });
+  return total;
+}
+
+// --- Weekly Standings / Weekly Winner -------------------------------------------------
+
+// Points a person's teams earned in one specific week (sum of that week's slotPoints; games
+// not final yet contribute 0, same as a BYE).
+function personWeekPoints(person, weekIdx){
+  let total = 0;
+  DRAFT[person].forEach((team, i)=>{
+    const pts = slotPoints(schedState[person][i][weekIdx]);
+    if(pts !== null) total += pts;
+  });
+  return total;
+}
+
+// Tiebreaker for the weekly winner: total scoring differential (team score - opponent score),
+// counting only the games that person's teams actually WON that week.
+function personWeekWinDifferential(person, weekIdx){
+  let diff = 0;
+  DRAFT[person].forEach((team, i)=>{
+    const slot = schedState[person][i][weekIdx];
+    if(slotPoints(slot) === 1){
+      const parts = slot.score.split('-').map(Number);
+      diff += (parts[0] - parts[1]);
+    }
+  });
+  return diff;
+}
+
+// Returns null if nothing's final yet that week. Otherwise { points, winners:[...], tieBroken,
+// stillTied }. Ties are broken by win-differential; if still tied after that, `stillTied` is
+// true and the weekly prize is meant to be split evenly across `winners`.
+function weekWinnerInfo(weekIdx){
+  const hasAnyFinal = PEOPLE.some(p => DRAFT[p].some((t,i)=> schedState[p][i][weekIdx].status === "Final"));
+  if(!hasAnyFinal) return null;
+  const pts = PEOPLE.map(p=>({ person:p, points: personWeekPoints(p, weekIdx) }));
+  const max = Math.max(...pts.map(x=>x.points));
+  let leaders = pts.filter(x=>x.points===max);
+  let tieBroken = false;
+  if(leaders.length > 1){
+    tieBroken = true;
+    const withDiff = leaders.map(l=>({ ...l, diff: personWeekWinDifferential(l.person, weekIdx) }));
+    const maxDiff = Math.max(...withDiff.map(x=>x.diff));
+    leaders = withDiff.filter(x=>x.diff===maxDiff);
+  }
+  return { points: max, winners: leaders.map(l=>l.person), tieBroken, stillTied: leaders.length > 1 };
+}
+
+// --- Regular season vs. postseason split -----------------------------------------------
+// "Regular season" = games actually played through Week 15, plus the manual bonus fields that
+// are earned as the regular season wraps up (bowl eligibility, bowl appearance, Heisman).
+// Conference Championship Games and Bowls/CFP are postseason. Regular + Postseason always
+// equals the full-season total shown in the main Standings table.
+const REGULAR_SEASON_LAST_WEEK = 15; // WEEKS index -- "Week 15"; index 16 is "Postseason"
+const WEEKLY_PRIZE_FIRST_WEEK = 1; // WEEKS index -- the $10 weekly prize starts at "Week 1"; Week 0 (index 0) doesn't count
+const POSTSEASON_FIELD_GROUP_LABELS = new Set(["Championship Games", "Bowls / Playoff"]);
+
+function teamScoreRegularSeason(person, idx){
+  const stats = state[person][idx];
+  let total = 0;
+  FIELD_GROUPS.forEach(g=>{
+    if(POSTSEASON_FIELD_GROUP_LABELS.has(g.label)) return;
+    g.fields.forEach(f=>{
+      const v = stats[f.key];
+      if(f.type==="bool"){ if(v) total += f.pts; } else { total += (Number(v)||0) * f.pts; }
+    });
+  });
+  const weeks = schedState[person] && schedState[person][idx];
+  if(weeks){
+    for(let wi=0; wi<=REGULAR_SEASON_LAST_WEEK; wi++){
+      const pts = slotPoints(weeks[wi]);
+      if(pts !== null) total += pts;
+    }
+  }
+  return total;
+}
+
+function personRegularSeasonScore(person){
+  let total = 0;
+  DRAFT[person].forEach((t,i)=> total += teamScoreRegularSeason(person, i));
+  return total;
+}
+
+// Postseason score is simply whatever's left of the full-season total -- guarantees
+// regular + postseason always reconciles exactly to the main Standings number.
+function personPostseasonScore(person){
+  return personScore(person) - personRegularSeasonScore(person);
+}
+
+// --- Money owed --------------------------------------------------------------------------
+const BUY_IN = 75;
+const WEEKLY_WINNER_PRIZE = 10;
+const REG_SEASON_LEADER_PRIZE = 100;
+const POSTSEASON_LEADER_PRIZE = 20;
+const FINAL_PLACE_PRIZES = [250, 150, 100]; // 1st, 2nd, 3rd
+
+// Splits a fixed prize evenly across a list of tied winners.
+function splitPrize(amount, winners){
+  const share = {};
+  PEOPLE.forEach(p=> share[p] = 0);
+  if(winners.length===0) return share;
+  const each = amount / winners.length;
+  winners.forEach(p=> share[p] = each);
+  return share;
+}
+
+// Handles ties across the top-3 overall placements: a tie that spans multiple prize slots
+// (e.g. two people tied for 1st) pools those slots' prize money and splits it evenly among
+// the tied group; the next distinct score picks up wherever the tie left off.
+function computeFinalPlacementPrizes(){
+  const overall = PEOPLE.map(p=>({ person:p, score: personScore(p) })).sort((a,b)=> b.score - a.score);
+  const prizes = {};
+  PEOPLE.forEach(p=> prizes[p] = 0);
+  let i = 0;
+  while(i < overall.length && i < FINAL_PLACE_PRIZES.length){
+    let j = i;
+    while(j+1 < overall.length && overall[j+1].score === overall[i].score) j++;
+    let pool = 0;
+    for(let k=i; k<=j && k<FINAL_PLACE_PRIZES.length; k++) pool += FINAL_PLACE_PRIZES[k];
+    const share = pool / (j-i+1);
+    for(let k=i; k<=j; k++) prizes[overall[k].person] += share;
+    i = j+1;
+  }
+  return prizes;
+}
+
+function computeMoneyOwed(){
+  const weekly = {}; PEOPLE.forEach(p=> weekly[p]=0);
+  // The $10 weekly prize starts at Week 1 -- Week 0 (the Aug 29 openers) doesn't count, and
+  // Postseason has its own separate $20 "most postseason points" bonus instead of a weekly prize.
+  for(let wi=WEEKLY_PRIZE_FIRST_WEEK; wi<=REGULAR_SEASON_LAST_WEEK; wi++){
+    const info = weekWinnerInfo(wi);
+    if(!info) continue;
+    const share = splitPrize(WEEKLY_WINNER_PRIZE, info.winners);
+    PEOPLE.forEach(p=> weekly[p] += share[p]);
+  }
+
+  const regScores = PEOPLE.map(p=>({ person:p, score: personRegularSeasonScore(p) }));
+  const regMax = Math.max(...regScores.map(x=>x.score));
+  const regLeaders = regScores.filter(x=>x.score===regMax).map(x=>x.person);
+  const regShare = splitPrize(REG_SEASON_LEADER_PRIZE, regLeaders);
+
+  const postScores = PEOPLE.map(p=>({ person:p, score: personPostseasonScore(p) }));
+  const postMax = Math.max(...postScores.map(x=>x.score));
+  const postLeaders = postMax > 0 ? postScores.filter(x=>x.score===postMax).map(x=>x.person) : [];
+  const postShare = splitPrize(POSTSEASON_LEADER_PRIZE, postLeaders);
+
+  const finalPrizes = computeFinalPlacementPrizes();
+
+  return PEOPLE.map(p=>{
+    const buyIn = -BUY_IN;
+    const w = weekly[p], r = regShare[p], po = postShare[p], fp = finalPrizes[p];
+    return { person:p, buyIn, weekly:w, regBonus:r, postBonus:po, finalPrize:fp, net: buyIn+w+r+po+fp };
+  });
+}
+
+// This app is now a static site (GitHub Pages): data/schedule.json is written automatically
+// by scripts/fetch_espn.py via the scheduled GitHub Action, and data/manual.json holds the
+// Commissioner's bonus-field entries. Since a static page can't write back to the repo itself,
+// edits stay in-memory + are flagged "unsaved" until the Commissioner downloads the updated
+// file and commits it -- at that point everyone loading the page sees the change.
+let manualDirty = false;
+let scheduleDirty = false;
+
+function scheduleSave(){ manualDirty = true; flashUnsaved(); }
+function scheduleSchedSave(){ scheduleDirty = true; flashUnsaved(); }
+
+function flashUnsaved(){
+  const el = document.getElementById('saveFlash');
+  if(!el) return;
+  el.textContent = 'Unsaved changes — download & commit to publish';
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(()=> el.classList.remove('show'), 2600);
+}
+
+function downloadJSON(filename, obj){
+  const blob = new Blob([JSON.stringify(obj, null, 1)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function downloadManualJson(){ downloadJSON('manual.json', state); manualDirty = false; }
+function downloadScheduleJson(){
+  downloadJSON('schedule.json', { updated_at: scheduleUpdatedAt, changed_weeks: [], data: schedState });
+  scheduleDirty = false;
+}
+
+async function load(){
+  try{
+    const [schedRes, manualRes] = await Promise.all([
+      fetch('./data/schedule.json'),
+      fetch('./data/manual.json'),
+    ]);
+    if(schedRes.ok){
+      const schedJson = await schedRes.json();
+      schedState = schedJson.data || {};
+      scheduleUpdatedAt = schedJson.updated_at || null;
+    }
+    if(manualRes.ok){
+      state = await manualRes.json();
+    }
+  }catch(e){
+    console.error('Failed to load data/*.json. If you opened this file directly (file://), serve it over http instead, e.g.: python3 -m http.server', e);
+  }
+  ensureState();
+  buildTeamOwners();
+  ensureSchedState();
+}
+
+function renderStandings(){
+  const el = document.getElementById('standingsView');
+  const scores = PEOPLE.map(p=>({ person:p, score: personScore(p) }));
+  scores.sort((a,b)=>b.score - a.score);
+  const max = Math.max(1, ...scores.map(s=>Math.abs(s.score)));
+
+  document.getElementById('leaderReadout').textContent = scores.length ? `${scores[0].person} ${scores[0].score}` : '—';
+
+  const syncedText = scheduleUpdatedAt
+    ? `Data auto-syncs from ESPN hourly via GitHub Actions. Last synced ${new Date(scheduleUpdatedAt).toLocaleString()}.`
+    : `Data auto-syncs from ESPN hourly via GitHub Actions -- no sync has run yet.`;
+  let html = `<div style="margin-bottom:14px; font-size:11px; color:var(--steel);">${syncedText}</div>`;
+
+  html += '<div class="scoreboard" style="padding:16px 20px;">';
+  scores.forEach((s, idx)=>{
+    const pct = Math.max(3, Math.round((Math.abs(s.score)/max)*100));
+    html += `
+      <div class="rank-row" data-person="${s.person}">
+        <div class="rank-num mono">${idx+1}</div>
+        <div>
+          <div class="rank-name-row">
+            <div class="rank-name display">${s.person}</div>
+            <div class="rank-score mono">${s.score}</div>
+          </div>
+          <div class="track"><div class="track-fill" style="width:${pct}%;"></div></div>
+        </div>
+        <div></div>
+      </div>`;
+  });
+  html += `<div class="yard-lines"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>`;
+  html += '</div>';
+
+  // ---- Weekly Standings -----------------------------------------------------------
+  html += `<div class="sub-table-wrap">
+    <div class="sub-table-head display">Weekly Standings</div>
+    <div class="week-tabs" style="margin-bottom:10px;">`;
+  WEEKS.forEach((w, wi)=>{
+    html += `<button class="week-tab weekly-standings-tab ${wi===weeklyStandingsWeek?'active':''}" data-week="${wi}">${w}</button>`;
+  });
+  html += `</div>`;
+  const weeklyRanked = PEOPLE.map(p=>({ person:p, points: personWeekPoints(p, weeklyStandingsWeek) }))
+    .sort((a,b)=> b.points - a.points);
+  html += `<table class="data-table"><thead><tr><th>Rank</th><th>Coach</th><th class="num">Points</th></tr></thead><tbody>`;
+  weeklyRanked.forEach((r, i)=>{
+    html += `<tr><td class="mono">${i+1}</td><td>${r.person}</td><td class="num mono ${r.points>0?'pos':(r.points<0?'neg-money':'')}">${r.points>0?'+':''}${r.points}</td></tr>`;
+  });
+  html += `</tbody></table></div>`;
+
+  // ---- Weekly Winners ---------------------------------------------------------------
+  html += `<div class="sub-table-wrap">
+    <div class="sub-table-head display">Weekly Winners</div>
+    <table class="data-table"><thead><tr><th>Week</th><th>Winner</th><th class="num">Points</th></tr></thead><tbody>`;
+  let anyWeeklyWinner = false;
+  for(let wi=WEEKLY_PRIZE_FIRST_WEEK; wi<=REGULAR_SEASON_LAST_WEEK; wi++){
+    const info = weekWinnerInfo(wi);
+    if(!info) continue;
+    anyWeeklyWinner = true;
+    const names = info.winners.join(' & ');
+    const tieNote = info.stillTied ? ' (still tied — split)' : (info.tieBroken ? ' (won tiebreak)' : '');
+    html += `<tr><td>${WEEKS[wi]}</td><td>${names}${tieNote}</td><td class="num mono pos">+${info.points}</td></tr>`;
+  }
+  if(!anyWeeklyWinner) html += `<tr><td colspan="3" style="color:var(--steel); font-style:italic;">No weeks final yet.</td></tr>`;
+  html += `</tbody></table></div>`;
+
+  // ---- Money Owed --------------------------------------------------------------------
+  const money = computeMoneyOwed();
+  html += `<div class="sub-table-wrap">
+    <div class="sub-table-head display">Money Owed</div>
+    <table class="data-table"><thead><tr>
+      <th>Coach</th><th class="num">Buy-In</th><th class="num">Weekly Wins</th>
+      <th class="num">Reg. Season</th><th class="num">Postseason</th><th class="num">Final Place</th><th class="num">Net</th>
+    </tr></thead><tbody>`;
+  money.forEach(m=>{
+    const fmt = (n)=> (n===0 ? '—' : (n>0?'+$':'-$') + Math.abs(n).toFixed(2).replace(/\.00$/,''));
+    html += `<tr>
+      <td>${m.person}</td>
+      <td class="num mono neg-money">-$${BUY_IN}</td>
+      <td class="num mono ${m.weekly>0?'pos':''}">${fmt(m.weekly)}</td>
+      <td class="num mono ${m.regBonus>0?'pos':''}">${fmt(m.regBonus)}</td>
+      <td class="num mono ${m.postBonus>0?'pos':''}">${fmt(m.postBonus)}</td>
+      <td class="num mono ${m.finalPrize>0?'pos':''}">${fmt(m.finalPrize)}</td>
+      <td class="num mono" style="font-size:13px; color:${m.net>=0?'var(--amber)':'var(--crimson)'};">${m.net>=0?'+$':'-$'}${Math.abs(m.net).toFixed(2).replace(/\.00$/,'')}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+    <div style="font-size:10px; color:var(--steel); margin-top:8px;">
+      $${BUY_IN} buy-in per coach ($${BUY_IN*PEOPLE.length} pool total) · +$${WEEKLY_WINNER_PRIZE} weekly winner · +$${REG_SEASON_LEADER_PRIZE} regular-season leader (after Week 15) · +$${POSTSEASON_LEADER_PRIZE} most postseason points · final standings pay $${FINAL_PLACE_PRIZES[0]}/$${FINAL_PLACE_PRIZES[1]}/$${FINAL_PLACE_PRIZES[2]} for 1st/2nd/3rd. Net updates live as results come in, so early-season numbers are just a running projection.
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+
+  el.querySelectorAll('.rank-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      currentPerson = row.dataset.person;
+      switchView('rosters');
+    });
+  });
+
+  el.querySelectorAll('.weekly-standings-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      weeklyStandingsWeek = Number(btn.dataset.week);
+      renderStandings();
+    });
+  });
+}
+
+function renderRosters(){
+  const el = document.getElementById('rostersView');
+  let html = '<div class="jersey-row">';
+  PEOPLE.forEach((p,i)=>{
+    html += `<button class="jersey display ${p===currentPerson?'active':''}" data-person="${p}"><span class="num">${String(i+1).padStart(2,'0')}</span>${p}</button>`;
+  });
+  html += '</div>';
+
+  html += `<div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
+    <div class="display" style="font-size:20px; color:var(--amber);">${currentPerson}</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="jersey display" id="commissionerBtn" style="cursor:pointer; ${commissionerUnlocked?'border-color:var(--amber); color:var(--amber);':''}">${commissionerUnlocked ? '\u{1F513} Commissioner Mode — Lock' : '\u{1F512} Commissioner Login'}</button>
+      ${commissionerUnlocked ? `<button class="jersey display" id="downloadManualBtn" style="cursor:pointer;">Download manual.json</button>` : ''}
+      <div class="mono" style="font-size:16px;">Total: ${personScore(currentPerson)}</div>
+    </div>
+  </div>`;
+  if(!commissionerUnlocked){
+    html += `<div style="font-size:11px; color:var(--steel); margin:-6px 0 14px;">Manual scoring fields are locked. Only the Commissioner can edit them.</div>`;
+  } else {
+    html += `<div style="font-size:11px; color:var(--steel); margin:-6px 0 14px;">Edits here only apply in your browser until you download manual.json and commit it to the repo -- that's what publishes the change for everyone else.</div>`;
+  }
+
+  html += '<div class="team-grid">';
+  DRAFT[currentPerson].forEach((team, i)=>{
+    const stats = state[currentPerson][i];
+    const auto = getAutoRecord(currentPerson, i);
+    const score = teamScore(currentPerson, i);
+    html += `<div class="card" data-idx="${i}">
+      <div class="card-head">
+        <div>
+          <div class="card-team display">${team}</div>
+          <div class="card-round">Round ${i+1} pick</div>
+        </div>
+        <div class="card-total mono ${score<0?'neg':''}">${score}</div>
+      </div>
+      <div class="stat-group">
+        <div class="stat-group-label">Auto-Tracked (from Schedule sync)</div>
+        <div class="stat-line"><label style="cursor:default;">Wins</label><span class="mono" style="color:var(--amber);">${auto.wins}</span><span class="pts mono">+1/ea</span></div>
+        <div class="stat-line"><label style="cursor:default;">Losses to FCS team</label><span class="mono" style="color:${auto.fcsLoss?'var(--crimson)':'var(--chalk-dim)'};">${auto.fcsLoss}</span><span class="pts mono">-1/ea</span></div>
+        ${auto.otherLoss ? `<div class="stat-line" style="opacity:0.6;"><label style="cursor:default;">Other losses (no points)</label><span class="mono">${auto.otherLoss}</span><span class="pts mono">0</span></div>` : ''}
+      </div>`;
+    FIELD_GROUPS.forEach(g=>{
+      html += `<div class="stat-group"><div class="stat-group-label">${g.label}</div>`;
+      g.fields.forEach(f=>{
+        const val = stats[f.key];
+        const dis = commissionerUnlocked ? '' : 'disabled';
+        if(f.type==="bool"){
+          html += `<div class="stat-line">
+            <label>
+              <input type="checkbox" data-key="${f.key}" ${val?'checked':''} ${dis}>
+              ${f.label}
+            </label>
+            <span class="pts mono">${f.pts>0?'+':''}${f.pts}</span>
+          </div>`;
+        } else {
+          html += `<div class="stat-line">
+            <label style="cursor:default;">${f.label}</label>
+            <input type="number" min="0" data-key="${f.key}" value="${val}" ${dis}>
+            <span class="pts mono">${f.pts>0?'+':''}${f.pts}/ea</span>
+          </div>`;
+        }
+      });
+      html += `</div>`;
+    });
+    html += `</div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+
+  el.querySelectorAll('.jersey').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      currentPerson = btn.dataset.person;
+      renderRosters();
+    });
+  });
+
+  const commissionerBtn = document.getElementById('commissionerBtn');
+  if(commissionerBtn){
+    commissionerBtn.addEventListener('click', ()=>{
+      if(commissionerUnlocked){
+        commissionerUnlocked = false;
+        renderRosters();
+      } else {
+        const pin = prompt('Enter Commissioner PIN:');
+        if(pin === null) return;
+        if(pin === COMMISSIONER_PIN){
+          commissionerUnlocked = true;
+          renderRosters();
+        } else {
+          alert('Incorrect PIN.');
+        }
+      }
+    });
+  }
+  const downloadManualBtn = document.getElementById('downloadManualBtn');
+  if(downloadManualBtn) downloadManualBtn.addEventListener('click', downloadManualJson);
+
+  el.querySelectorAll('.card').forEach(card=>{
+    const idx = Number(card.dataset.idx);
+    card.querySelectorAll('input[type=checkbox]').forEach(input=>{
+      input.addEventListener('change', ()=>{
+        if(!commissionerUnlocked) return;
+        state[currentPerson][idx][input.dataset.key] = input.checked;
+        updateCardTotal(card, idx);
+        scheduleSave();
+      });
+    });
+    card.querySelectorAll('input[type=number]').forEach(input=>{
+      input.addEventListener('input', ()=>{
+        if(!commissionerUnlocked) return;
+        let v = Math.max(0, Math.round(Number(input.value)||0));
+        input.value = v;
+        state[currentPerson][idx][input.dataset.key] = v;
+        updateCardTotal(card, idx);
+        scheduleSave();
+      });
+    });
+  });
+}
+
+function updateCardTotal(card, idx){
+  const score = teamScore(currentPerson, idx);
+  const totalEl = card.querySelector('.card-total');
+  totalEl.textContent = score;
+  totalEl.classList.toggle('neg', score < 0);
+  // also refresh header total
+  const headerTotal = document.querySelector('#rostersView > div:nth-child(2) .mono');
+  if(headerTotal) headerTotal.textContent = `Total: ${personScore(currentPerson)}`;
+}
+
+function findMatchup(person, idx, oppText){
+  const clean = normalizeTeamName(oppText);
+  if(!clean) return null;
+  const owners = teamOwners[clean];
+  if(!owners) return null;
+  const others = owners.filter(o=> !(o.person===person && o.idx===idx));
+  if(others.length===0) return null;
+  return others; // array of {person, idx}
+}
+
+function renderSchedule(){
+  const el = document.getElementById('scheduleView');
+  const weekHasData = WEEKS.map((w, wi)=>{
+    for(const p of PEOPLE){ for(let i=0;i<14;i++){ if(schedState[p][i][wi].opp){ return true; } } }
+    return false;
+  });
+
+  let html = '<div class="week-tabs">';
+  WEEKS.forEach((w, wi)=>{
+    html += `<button class="week-tab ${wi===currentWeek?'active':''} ${weekHasData[wi]?'has-data':''}" data-week="${wi}">${w}</button>`;
+  });
+  html += '</div>';
+
+  const syncedText = scheduleUpdatedAt
+    ? `Auto-synced from ESPN hourly via GitHub Actions. Last synced ${new Date(scheduleUpdatedAt).toLocaleString()}.`
+    : `Auto-synced from ESPN hourly via GitHub Actions -- no sync has run yet.`;
+  html += `<div style="margin-bottom:12px; font-size:11px; color:var(--steel);">${syncedText}</div>`;
+
+  html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+    <button class="jersey display" id="commissionerBtnSched" style="cursor:pointer; ${commissionerUnlocked?'border-color:var(--amber); color:var(--amber);':''}">${commissionerUnlocked ? '\u{1F513} Commissioner Mode — Lock' : '\u{1F512} Commissioner Login'}</button>
+    ${commissionerUnlocked ? `<button class="jersey display" id="downloadScheduleBtn" style="cursor:pointer;">Download schedule.json</button>` : ''}
+    <span style="font-size:11px; color:var(--steel);">${commissionerUnlocked ? "Fields are editable -- download & commit to publish a correction (e.g. a naming mismatch)." : "Fields below are locked. Only the Commissioner can edit them."}</span>
+  </div>`;
+
+  html += `<div class="sched-legend">
+    <span><span class="dot" style="background:var(--amber);"></span>Pool matchup (two persons' teams face off)</span>
+    <span><span class="dot" style="background:var(--crimson);"></span>Same-person matchup (owns both teams)</span>
+    <span><span class="dot" style="background:var(--steel);"></span>Undrafted / FCS opponent</span>
+  </div>`;
+
+  // A team with no opponent counts as a BYE only once we actually know this week's slate --
+  // i.e. some other drafted team has a game logged for it -- otherwise an unsynced week would
+  // wrongly show every team as having a bye before any data has even been pulled.
+  const weekKnown = weekHasData[currentWeek];
+  const dis = commissionerUnlocked ? '' : 'disabled';
+
+  PEOPLE.forEach(person=>{
+    html += `<div class="sched-person"><div class="sched-person-head display">${person}</div>`;
+    DRAFT[person].forEach((team, i)=>{
+      const slot = schedState[person][i][currentWeek];
+      const isBye = weekKnown && !slot.opp;
+
+      if(isBye){
+        html += `<div class="sched-row" data-idx="${i}">
+          <div class="sched-team">${team}</div>
+          <div style="color:var(--steel); font-size:12px; font-style:italic;">No game scheduled</div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="mono" style="font-size:12px; color:var(--steel); min-width:18px; text-align:right;">0</span>
+            <span class="sched-badge" style="color:var(--steel); border-color:var(--steel);">BYE</span>
+          </div>
+        </div>`;
+        return;
+      }
+
+      const others = findMatchup(person, i, slot.opp);
+      let badge = '';
+      if(others){
+        const selfMatch = others.some(o=>o.person===person);
+        const label = others.map(o=>`${o.person}'s ${DRAFT[o.person][o.idx]}`).join(', ');
+        badge = `<span class="sched-badge ${selfMatch?'self':'matchup'}" title="${label}">${selfMatch? 'Self: '+others[0].person : 'vs '+others[0].person}</span>`;
+      } else if(slot.fcs){
+        badge = `<span class="sched-badge undrafted">Undrafted</span>`;
+      } else if(slot.opp){
+        badge = `<span class="sched-badge" style="color:var(--steel);">non-pool</span>`;
+      }
+      const pts = slotPoints(slot);
+      const ptsColor = pts===1 ? 'var(--amber)' : pts===-1 ? 'var(--crimson)' : 'var(--chalk-dim)';
+      const ptsLabel = pts===null ? '—' : (pts>0 ? '+1' : String(pts));
+      html += `<div class="sched-row" data-idx="${i}">
+        <div class="sched-team">${team}</div>
+        <input class="sched-opp-input" type="text" placeholder="Opponent…" value="${slot.opp ? slot.opp.replace(/"/g,'&quot;') : ''}" ${dis}>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input class="sched-opp-input" style="width:70px;" type="text" placeholder="Score" data-score value="${slot.score ? slot.score.replace(/"/g,'&quot;') : ''}" ${dis}>
+          <select data-status style="background:var(--turf); color:var(--chalk); border:1.5px solid var(--steel); border-radius:3px; font-family:inherit; font-size:11px; padding:2px;" ${dis}>
+            <option value="" ${!slot.status?'selected':''}>—</option>
+            <option value="Final" ${slot.status==='Final'?'selected':''}>Final</option>
+            <option value="Scheduled" ${slot.status==='Scheduled'?'selected':''}>Scheduled</option>
+          </select>
+          ${badge}
+          <label class="sched-fcs-toggle"><input type="checkbox" data-fcs ${slot.fcs?'checked':''} ${dis}>FCS</label>
+          <span class="mono" style="font-size:12px; color:${ptsColor}; min-width:22px; text-align:right;" title="Points awarded for this game">${ptsLabel}</span>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  el.innerHTML = html;
+
+  el.querySelectorAll('.week-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ currentWeek = Number(btn.dataset.week); renderSchedule(); });
+  });
+
+  const downloadScheduleBtn = document.getElementById('downloadScheduleBtn');
+  if(downloadScheduleBtn) downloadScheduleBtn.addEventListener('click', downloadScheduleJson);
+
+  const commissionerBtnSched = document.getElementById('commissionerBtnSched');
+  if(commissionerBtnSched){
+    commissionerBtnSched.addEventListener('click', ()=>{
+      if(commissionerUnlocked){
+        commissionerUnlocked = false;
+        renderSchedule();
+      } else {
+        const pin = prompt('Enter Commissioner PIN:');
+        if(pin === null) return;
+        if(pin === COMMISSIONER_PIN){
+          commissionerUnlocked = true;
+          renderSchedule();
+        } else {
+          alert('Incorrect PIN.');
+        }
+      }
+    });
+  }
+
+  el.querySelectorAll('.sched-person').forEach((block, pi)=>{
+    const person = PEOPLE[pi];
+    block.querySelectorAll('.sched-row').forEach(row=>{
+      const idx = Number(row.dataset.idx);
+      const oppInput = row.querySelector('.sched-opp-input');
+      if(!oppInput) return; // BYE row -- nothing editable, nothing to score
+      const scoreInput = row.querySelector('[data-score]');
+      const statusSelect = row.querySelector('[data-status]');
+      const fcsBox = row.querySelector('[data-fcs]');
+      oppInput.addEventListener('input', ()=>{
+        if(!commissionerUnlocked) return;
+        schedState[person][idx][currentWeek].opp = oppInput.value;
+        scheduleSchedSave();
+      });
+      oppInput.addEventListener('blur', ()=> renderSchedule());
+      scoreInput.addEventListener('input', ()=>{
+        if(!commissionerUnlocked) return;
+        schedState[person][idx][currentWeek].score = scoreInput.value;
+        scheduleSchedSave();
+      });
+      scoreInput.addEventListener('blur', ()=> renderSchedule());
+      statusSelect.addEventListener('change', ()=>{
+        if(!commissionerUnlocked) return;
+        schedState[person][idx][currentWeek].status = statusSelect.value;
+        scheduleSchedSave();
+        renderSchedule();
+      });
+      fcsBox.addEventListener('change', ()=>{
+        if(!commissionerUnlocked) return;
+        schedState[person][idx][currentWeek].fcs = fcsBox.checked;
+        scheduleSchedSave();
+        renderSchedule();
+      });
+    });
+  });
+}
+
+function renderRules(){
+  const el = document.getElementById('rulesView');
+  let html = '<div class="scoreboard" style="padding:18px 22px;">';
+  html += `<div class="stat-group-label" style="font-size:11px;">Auto-Tracked (from Schedule sync)</div>
+    <div class="stat-line" style="border-bottom:1px solid var(--line);"><span>Win</span><span class="pts mono" style="font-size:12px;">+1</span></div>
+    <div class="stat-line" style="border-bottom:1px solid var(--line);"><span>Loss to FCS team</span><span class="pts mono" style="font-size:12px;">-1</span></div>`;
+  FIELD_GROUPS.forEach(g=>{
+    html += `<div class="stat-group-label" style="font-size:11px; margin-top:14px;">${g.label}</div>`;
+    g.fields.forEach(f=>{
+      html += `<div class="stat-line" style="border-bottom:1px solid var(--line);">
+        <span>${f.label}${f.type==='count'?' (per occurrence)':''}</span>
+        <span class="pts mono" style="font-size:12px;">${f.pts>0?'+':''}${f.pts}</span>
+      </div>`;
+    });
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function switchView(view){
+  currentView = view;
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.getElementById('standingsView').style.display = view==='standings' ? '' : 'none';
+  document.getElementById('rostersView').style.display = view==='rosters' ? '' : 'none';
+  document.getElementById('scheduleView').style.display = view==='schedule' ? '' : 'none';
+  document.getElementById('rulesView').style.display = view==='rules' ? '' : 'none';
+  if(view==='standings') renderStandings();
+  if(view==='rosters') renderRosters();
+  if(view==='schedule') renderSchedule();
+  if(view==='rules') renderRules();
+}
+
+document.querySelectorAll('.nav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>switchView(btn.dataset.view));
+});
+
+(async function init(){
+  await load();
+  renderStandings();
+})();
+</script>
+</body>
+</html>
