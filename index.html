@@ -3,6 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <title>CFB26 Pool Tracker</title>
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
+<link rel="icon" href="assets/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
 <style>
   :root{
     --turf: #16331F;
@@ -744,15 +749,13 @@ function computeMoneyOwed(){
 }
 
 // This app is now a static site (GitHub Pages): data/schedule.json is written automatically
-// by scripts/fetch_espn.py via the scheduled GitHub Action, and data/manual.json holds the
-// Commissioner's bonus-field entries. Since a static page can't write back to the repo itself,
-// edits stay in-memory + are flagged "unsaved" until the Commissioner downloads the updated
-// file and commits it -- at that point everyone loading the page sees the change.
+// by scripts/fetch_espn.py via the scheduled GitHub Action and is read-only in the UI --
+// there's no manual editing of the schedule anymore. data/manual.json holds the Commissioner's
+// bonus-field entries (Rosters tab), which still can't write back to the repo on their own, so
+// those edits stay in-memory + flagged "unsaved" until downloaded and committed.
 let manualDirty = false;
-let scheduleDirty = false;
 
 function scheduleSave(){ manualDirty = true; flashUnsaved(); }
-function scheduleSchedSave(){ scheduleDirty = true; flashUnsaved(); }
 
 function flashUnsaved(){
   const el = document.getElementById('saveFlash');
@@ -772,10 +775,6 @@ function downloadJSON(filename, obj){
   URL.revokeObjectURL(url);
 }
 function downloadManualJson(){ downloadJSON('manual.json', state); manualDirty = false; }
-function downloadScheduleJson(){
-  downloadJSON('schedule.json', { updated_at: scheduleUpdatedAt, changed_weeks: [], data: schedState });
-  scheduleDirty = false;
-}
 
 async function load(){
   try{
@@ -1060,15 +1059,9 @@ function renderSchedule(){
   html += '</div>';
 
   const syncedText = scheduleUpdatedAt
-    ? `Auto-synced from ESPN hourly via GitHub Actions. Last synced ${new Date(scheduleUpdatedAt).toLocaleString()}.`
+    ? `Auto-synced from ESPN hourly via GitHub Actions. Last synced ${new Date(scheduleUpdatedAt).toLocaleString()}. Read-only -- there's nothing to edit here.`
     : `Auto-synced from ESPN hourly via GitHub Actions -- no sync has run yet.`;
   html += `<div style="margin-bottom:12px; font-size:11px; color:var(--steel);">${syncedText}</div>`;
-
-  html += `<div style="display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-    <button class="jersey display" id="commissionerBtnSched" style="cursor:pointer; ${commissionerUnlocked?'border-color:var(--amber); color:var(--amber);':''}">${commissionerUnlocked ? '\u{1F513} Commissioner Mode — Lock' : '\u{1F512} Commissioner Login'}</button>
-    ${commissionerUnlocked ? `<button class="jersey display" id="downloadScheduleBtn" style="cursor:pointer;">Download schedule.json</button>` : ''}
-    <span style="font-size:11px; color:var(--steel);">${commissionerUnlocked ? "Fields are editable -- download & commit to publish a correction (e.g. a naming mismatch)." : "Fields below are locked. Only the Commissioner can edit them."}</span>
-  </div>`;
 
   html += `<div class="sched-legend">
     <span><span class="dot" style="background:var(--amber);"></span>Pool matchup (two persons' teams face off)</span>
@@ -1080,7 +1073,6 @@ function renderSchedule(){
   // i.e. some other drafted team has a game logged for it -- otherwise an unsynced week would
   // wrongly show every team as having a bye before any data has even been pulled.
   const weekKnown = weekHasData[currentWeek];
-  const dis = commissionerUnlocked ? '' : 'disabled';
 
   PEOPLE.forEach(person=>{
     html += `<div class="sched-person"><div class="sched-person-head display">${person}</div>`;
@@ -1099,6 +1091,14 @@ function renderSchedule(){
         </div>`;
         return;
       }
+      if(!slot.opp){
+        html += `<div class="sched-row" data-idx="${i}">
+          <div class="sched-team">${team}</div>
+          <div style="color:var(--steel); font-size:12px; font-style:italic;">Not synced yet</div>
+          <div></div>
+        </div>`;
+        return;
+      }
 
       const others = findMatchup(person, i, slot.opp);
       let badge = '';
@@ -1108,24 +1108,19 @@ function renderSchedule(){
         badge = `<span class="sched-badge ${selfMatch?'self':'matchup'}" title="${label}">${selfMatch? 'Self: '+others[0].person : 'vs '+others[0].person}</span>`;
       } else if(slot.fcs){
         badge = `<span class="sched-badge undrafted">Undrafted</span>`;
-      } else if(slot.opp){
+      } else {
         badge = `<span class="sched-badge" style="color:var(--steel);">non-pool</span>`;
       }
       const pts = slotPoints(slot);
       const ptsColor = pts===1 ? 'var(--amber)' : pts===-1 ? 'var(--crimson)' : 'var(--chalk-dim)';
       const ptsLabel = pts===null ? '—' : (pts>0 ? '+1' : String(pts));
+      const scoreText = slot.score ? slot.score : (slot.status || '—');
       html += `<div class="sched-row" data-idx="${i}">
         <div class="sched-team">${team}</div>
-        <input class="sched-opp-input" type="text" placeholder="Opponent…" value="${slot.opp ? slot.opp.replace(/"/g,'&quot;') : ''}" ${dis}>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <input class="sched-opp-input" style="width:70px;" type="text" placeholder="Score" data-score value="${slot.score ? slot.score.replace(/"/g,'&quot;') : ''}" ${dis}>
-          <select data-status style="background:var(--turf); color:var(--chalk); border:1.5px solid var(--steel); border-radius:3px; font-family:inherit; font-size:11px; padding:2px;" ${dis}>
-            <option value="" ${!slot.status?'selected':''}>—</option>
-            <option value="Final" ${slot.status==='Final'?'selected':''}>Final</option>
-            <option value="Scheduled" ${slot.status==='Scheduled'?'selected':''}>Scheduled</option>
-          </select>
+        <div style="font-size:13px; color:var(--chalk-dim);">vs ${slot.opp}</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="mono" style="font-size:12px; color:var(--steel);">${scoreText}</span>
           ${badge}
-          <label class="sched-fcs-toggle"><input type="checkbox" data-fcs ${slot.fcs?'checked':''} ${dis}>FCS</label>
           <span class="mono" style="font-size:12px; color:${ptsColor}; min-width:22px; text-align:right;" title="Points awarded for this game">${ptsLabel}</span>
         </div>
       </div>`;
@@ -1136,64 +1131,6 @@ function renderSchedule(){
 
   el.querySelectorAll('.week-tab').forEach(btn=>{
     btn.addEventListener('click', ()=>{ currentWeek = Number(btn.dataset.week); renderSchedule(); });
-  });
-
-  const downloadScheduleBtn = document.getElementById('downloadScheduleBtn');
-  if(downloadScheduleBtn) downloadScheduleBtn.addEventListener('click', downloadScheduleJson);
-
-  const commissionerBtnSched = document.getElementById('commissionerBtnSched');
-  if(commissionerBtnSched){
-    commissionerBtnSched.addEventListener('click', ()=>{
-      if(commissionerUnlocked){
-        commissionerUnlocked = false;
-        renderSchedule();
-      } else {
-        const pin = prompt('Enter Commissioner PIN:');
-        if(pin === null) return;
-        if(pin === COMMISSIONER_PIN){
-          commissionerUnlocked = true;
-          renderSchedule();
-        } else {
-          alert('Incorrect PIN.');
-        }
-      }
-    });
-  }
-
-  el.querySelectorAll('.sched-person').forEach((block, pi)=>{
-    const person = PEOPLE[pi];
-    block.querySelectorAll('.sched-row').forEach(row=>{
-      const idx = Number(row.dataset.idx);
-      const oppInput = row.querySelector('.sched-opp-input');
-      if(!oppInput) return; // BYE row -- nothing editable, nothing to score
-      const scoreInput = row.querySelector('[data-score]');
-      const statusSelect = row.querySelector('[data-status]');
-      const fcsBox = row.querySelector('[data-fcs]');
-      oppInput.addEventListener('input', ()=>{
-        if(!commissionerUnlocked) return;
-        schedState[person][idx][currentWeek].opp = oppInput.value;
-        scheduleSchedSave();
-      });
-      oppInput.addEventListener('blur', ()=> renderSchedule());
-      scoreInput.addEventListener('input', ()=>{
-        if(!commissionerUnlocked) return;
-        schedState[person][idx][currentWeek].score = scoreInput.value;
-        scheduleSchedSave();
-      });
-      scoreInput.addEventListener('blur', ()=> renderSchedule());
-      statusSelect.addEventListener('change', ()=>{
-        if(!commissionerUnlocked) return;
-        schedState[person][idx][currentWeek].status = statusSelect.value;
-        scheduleSchedSave();
-        renderSchedule();
-      });
-      fcsBox.addEventListener('change', ()=>{
-        if(!commissionerUnlocked) return;
-        schedState[person][idx][currentWeek].fcs = fcsBox.checked;
-        scheduleSchedSave();
-        renderSchedule();
-      });
-    });
   });
 }
 
