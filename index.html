@@ -356,10 +356,21 @@ const FIELD_GROUPS = [
 const ALL_FIELDS = FIELD_GROUPS.flatMap(g=>g.fields);
 
 const WEEKS = ["Week 0","Week 1","Week 2","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","Week 12","Week 13","Week 14","Week 15","Postseason"];
+// ESPN's own "week" numbering merges the Aug 29 Week 0 openers and the true Week 1 slate
+// (Sep 3-7) into a single "week=1" bucket, so Week 0 and Week 1 are fetched by explicit date
+// range instead. Used by the client-side background sync below (GitHub Actions' IPs get
+// blocked by ESPN with a 403, but a real visitor's browser is not a datacenter IP).
+const ESPN_WEEK_PARAMS = [
+  { dates: "20260828-20260830" },  // Week 0: Sat Aug 29 openers
+  { dates: "20260903-20260908" },  // Week 1: Thu 9/3 - Mon 9/7
+  ...Array.from({ length: 14 }, (_, i) => ({ week: i + 2, seasontype: 2 })), // Week 2 - Week 15
+  { week: 1, seasontype: 3 },      // Postseason
+];
 
 let state = {}; // state[person][teamIndex] = { key: value }  -- Commissioner-entered bonus fields, loaded from data/manual.json
 let schedState = {}; // schedState[person][teamIndex][weekIdx] = { opp, fcs, status, score }  -- loaded from data/schedule.json, auto-synced hourly by GitHub Actions
 let scheduleUpdatedAt = null; // timestamp string from data/schedule.json, shown in the UI
+let liveSyncStatus = "idle"; // "idle" | "syncing" | "done" | "unavailable" -- background client-side ESPN sync, on top of the static baseline
 let currentView = "standings";
 let currentPerson = PEOPLE[0];
 let currentWeek = 0;
@@ -776,6 +787,106 @@ function downloadJSON(filename, obj){
 }
 function downloadManualJson(){ downloadJSON('manual.json', state); manualDirty = false; }
 
+function isWeekComplete(weekIdx){
+  let any = false;
+  for(const p of PEOPLE){
+    for(let i=0;i<14;i++){
+      const slot = schedState[p][i][weekIdx];
+      if(slot.opp){ any = true; if(slot.status !== "Final") return false; }
+    }
+  }
+  return any;
+}
+
+// Fetches one week directly from ESPN in the visitor's own browser. This is what actually
+// keeps the Schedule tab current: GitHub Actions' runner IPs get a 403 from ESPN's bot
+// detection, but a real visitor's browser is ordinary residential/mobile traffic and isn't
+// blocked. Merges over whatever the static data/schedule.json baseline already had -- never
+// writes anywhere, this only affects what this one visitor sees in this one page load.
+async function syncWeekFromESPNClient(weekIdx){
+  const params = ESPN_WEEK_PARAMS[weekIdx];
+  const qs = params.dates
+    ? `dates=${params.dates}`
+    : `week=${params.week}&seasontype=${params.seasontype}&year=2026`;
+  const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&${qs}&limit=100`;
+
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("HTTP "+res.status);
+  const data = await res.json();
+  if(!data.events) throw new Error("Unexpected ESPN response shape");
+  const events = data.events;
+
+  const fresh = {};
+  PEOPLE.forEach(p=>{ fresh[p] = {}; DRAFT[p].forEach((t,i)=>{ fresh[p][i] = { ...schedState[p][i][weekIdx] }; }); });
+
+  events.forEach(ev=>{
+    const comp = (ev.competitions && ev.competitions[0]) || {};
+    const competitors = comp.competitors || [];
+    if(competitors.length < 2) return;
+    const teams = competitors.map(c=>({
+      names: [c.team.displayName, c.team.shortDisplayName, c.team.location, c.team.name].filter(Boolean),
+      score: c.score,
+    }));
+    const completed = !!(ev.status && ev.status.type && ev.status.type.completed);
+    const sideOwners = teams.map(t=>{
+      for(const nm of t.names){
+        const key = normalizeTeamName(nm);
+        if(teamOwners[key]) return { owners: teamOwners[key], name: t.names[1] || t.names[0] };
+      }
+      return null;
+    });
+    teams.forEach((t, ti)=>{
+      const mine = sideOwners[ti];
+      if(!mine) return;
+      const other = sideOwners[1-ti];
+      const oppNames = teams[1-ti].names;
+      const oppDisplay = oppNames[1] || oppNames[0];
+      mine.owners.forEach(({person, idx})=>{
+        fresh[person][idx] = {
+          opp: oppDisplay,
+          fcs: !other,
+          status: completed ? "Final" : "Scheduled",
+          score: completed ? `${t.score}-${teams[1-ti].score}` : "",
+        };
+      });
+    });
+  });
+
+  PEOPLE.forEach(p=> DRAFT[p].forEach((t,i)=>{ schedState[p][i][weekIdx] = fresh[p][i]; }));
+}
+
+// Runs once per page load: syncs weeks in order starting from Week 0, skipping any the static
+// baseline already has marked complete, and stops at the first week that comes back not fully
+// final (the current/live week, or beyond) -- so a visitor never triggers dozens of pointless
+// requests for weeks that haven't happened yet.
+async function autoSyncFromESPN(){
+  liveSyncStatus = "syncing";
+  let anySuccess = false;
+  let anyAttempt = false;
+  try{
+    for(let wi=0; wi<WEEKS.length; wi++){
+      if(isWeekComplete(wi)) continue;
+      anyAttempt = true;
+      try{
+        await syncWeekFromESPNClient(wi);
+        anySuccess = true;
+      }catch(e){
+        console.warn(`Live ESPN sync failed for ${WEEKS[wi]}:`, e);
+        liveSyncStatus = "unavailable";
+        return; // stop entirely -- if the visitor's own network can't reach ESPN, further weeks won't work either
+      }
+      if(currentView === 'standings') renderStandings();
+      if(currentView === 'schedule') renderSchedule();
+      if(currentView === 'rosters') renderRosters();
+      if(!isWeekComplete(wi)) break; // hit the current/live week -- stop here
+    }
+    liveSyncStatus = anyAttempt ? (anySuccess ? "done" : "unavailable") : "done";
+  }finally{
+    if(currentView === 'standings') renderStandings();
+    if(currentView === 'schedule') renderSchedule();
+  }
+}
+
 async function load(){
   try{
     const [schedRes, manualRes] = await Promise.all([
@@ -798,6 +909,13 @@ async function load(){
   ensureSchedState();
 }
 
+function liveSyncStatusText(){
+  if(liveSyncStatus === "syncing") return "Checking ESPN live in your browser…";
+  if(liveSyncStatus === "done") return "Live-checked against ESPN in your browser just now.";
+  if(liveSyncStatus === "unavailable") return "Couldn't reach ESPN from your browser -- showing the last baseline sync.";
+  return "";
+}
+
 function renderStandings(){
   const el = document.getElementById('standingsView');
   const scores = PEOPLE.map(p=>({ person:p, score: personScore(p) }));
@@ -806,9 +924,10 @@ function renderStandings(){
 
   document.getElementById('leaderReadout').textContent = scores.length ? `${scores[0].person} ${scores[0].score}` : '—';
 
-  const syncedText = scheduleUpdatedAt
-    ? `Data auto-syncs from ESPN hourly via GitHub Actions. Last synced ${new Date(scheduleUpdatedAt).toLocaleString()}.`
-    : `Data auto-syncs from ESPN hourly via GitHub Actions -- no sync has run yet.`;
+  const baseline = scheduleUpdatedAt
+    ? `Baseline synced hourly via GitHub Actions (last: ${new Date(scheduleUpdatedAt).toLocaleString()}).`
+    : `Baseline syncs hourly via GitHub Actions -- no run has landed yet.`;
+  const syncedText = `${baseline} ${liveSyncStatusText()}`;
   let html = `<div style="margin-bottom:14px; font-size:11px; color:var(--steel);">${syncedText}</div>`;
 
   html += '<div class="scoreboard" style="padding:16px 20px;">';
@@ -1058,9 +1177,10 @@ function renderSchedule(){
   });
   html += '</div>';
 
-  const syncedText = scheduleUpdatedAt
-    ? `Auto-synced from ESPN hourly via GitHub Actions. Last synced ${new Date(scheduleUpdatedAt).toLocaleString()}. Read-only -- there's nothing to edit here.`
-    : `Auto-synced from ESPN hourly via GitHub Actions -- no sync has run yet.`;
+  const baseline = scheduleUpdatedAt
+    ? `Baseline synced hourly via GitHub Actions (last: ${new Date(scheduleUpdatedAt).toLocaleString()}).`
+    : `Baseline syncs hourly via GitHub Actions -- no run has landed yet.`;
+  const syncedText = `${baseline} ${liveSyncStatusText()} Read-only -- there's nothing to edit here.`;
   html += `<div style="margin-bottom:12px; font-size:11px; color:var(--steel);">${syncedText}</div>`;
 
   html += `<div class="sched-legend">
@@ -1173,6 +1293,7 @@ document.querySelectorAll('.nav button').forEach(btn=>{
 (async function init(){
   await load();
   renderStandings();
+  autoSyncFromESPN(); // runs in the background; each render call above/inside it updates the UI as results come in
 })();
 </script>
 </body>
