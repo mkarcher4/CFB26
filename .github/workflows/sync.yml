@@ -1,9 +1,14 @@
 name: Sync ESPN Data
 
 on:
-  schedule:
-    # Every hour, on the hour (UTC). Adjust as you like -- e.g. "*/30 * * * *" for every 30 min.
-    - cron: "*/15 * * * *"
+  # Hourly schedule is disabled -- ESPN blocks GitHub Actions' runner IPs outright (confirmed:
+  # every week/query pattern gets a 403, not a rate limit or a fluke on one request). The app's
+  # index.html now does the real syncing client-side, in each visitor's own browser, which isn't
+  # blocked. This workflow is kept around in case ESPN's block on GitHub's IPs ever lifts --
+  # trigger it manually from the Actions tab to test. To re-enable the hourly schedule, uncomment
+  # the two lines below.
+  # schedule:
+  #   - cron: "0 * * * *"
   workflow_dispatch: {}   # lets you trigger a run manually from the Actions tab
 
 permissions:
