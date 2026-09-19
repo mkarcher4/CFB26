@@ -181,16 +181,41 @@ def is_week_complete(schedule, week_idx):
     return any_game
 
 
-def fetch_week(week_idx):
+HEADERS = {
+    # A real browser UA + referer -- GitHub Actions runners sit on well-known cloud IP
+    # ranges that some APIs rate-limit or block for obvious bot/script user agents.
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://www.espn.com/college-football/scoreboard",
+}
+
+
+def fetch_week(week_idx, attempts=3):
     params = ESPN_WEEK_PARAMS[week_idx]
     if "dates" in params:
         qs = f"dates={params['dates']}"
     else:
         qs = f"week={params['week']}&seasontype={params['seasontype']}&year=2026"
     url = f"https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&{qs}&limit=100"
-    resp = requests.get(url, timeout=20, headers={"User-Agent": "cfb26-pool-sync/1.0"})
-    resp.raise_for_status()
-    return resp.json().get("events", [])
+
+    last_err = None
+    for attempt in range(1, attempts + 1):
+        try:
+            resp = requests.get(url, timeout=20, headers=HEADERS)
+            resp.raise_for_status()
+            data = resp.json()
+            if "events" not in data:
+                # ESPN sometimes returns HTTP 200 with an error payload instead of a real
+                # HTTP error status -- raise_for_status() doesn't catch this, so check for it
+                # explicitly rather than silently treating it as "zero games this week".
+                raise RuntimeError(f"ESPN response had no 'events' key: {data}")
+            return data["events"]
+        except Exception as e:
+            last_err = e
+            if attempt < attempts:
+                time.sleep(2 * attempt)  # 2s, then 4s
+    raise last_err
 
 
 def main():
@@ -219,14 +244,18 @@ def main():
                     schedule[person][idx].append(blank_slot())
 
     changed_weeks = []
+    failed_weeks = []
+    attempted_weeks = 0
     for week_idx, week_label in enumerate(WEEKS):
         if is_week_complete(schedule, week_idx):
             print(f"skip {week_label}: already complete")
             continue
+        attempted_weeks += 1
         try:
             events = fetch_week(week_idx)
         except Exception as e:
             print(f"WARN: fetch failed for {week_label}: {e}", file=sys.stderr)
+            failed_weeks.append(week_label)
             continue
 
         fresh = {
@@ -280,15 +309,26 @@ def main():
         print(f"synced {week_label}: {len(events)} events")
         time.sleep(0.3)  # be a polite guest
 
+    if attempted_weeks > 0 and len(failed_weeks) == attempted_weeks:
+        # Every week we tried to fetch failed -- ESPN is down, blocking us, or the URL/params
+        # are wrong. Don't write a file with a fresh "updated_at" timestamp and zero real
+        # changes; that would look like a successful sync in the app when nothing actually
+        # synced. Exit with an error instead so the GitHub Action run shows red.
+        print(f"ERROR: all {attempted_weeks} attempted week(s) failed to fetch: {failed_weeks}", file=sys.stderr)
+        sys.exit(1)
+
     out = {
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "changed_weeks": changed_weeks,
+        "failed_weeks": failed_weeks,
         "data": schedule,
     }
     os.makedirs(os.path.dirname(SCHEDULE_PATH), exist_ok=True)
     with open(SCHEDULE_PATH, "w") as f:
         json.dump(out, f, indent=1)
     print(f"wrote {SCHEDULE_PATH} -- {len(changed_weeks)} week(s) updated: {changed_weeks}")
+    if failed_weeks:
+        print(f"NOTE: {len(failed_weeks)} week(s) failed and were left as-is: {failed_weeks}", file=sys.stderr)
 
 
 if __name__ == "__main__":
