@@ -33,9 +33,16 @@ WEEKS = ["Week 0","Week 1","Week 2","Week 3","Week 4","Week 5","Week 6","Week 7"
 # Week 0 and Week 1 use explicit date ranges because ESPN's own "week=1" bucket merges the
 # Aug 29 openers and the true Week 1 slate (Sep 3-7) into one response -- a team that played
 # in both would only show up once if we used ESPN's week number for that range.
+# ESPN's own "week" numbering merges the Aug 29 Week 0 openers and the true Week 1 slate
+# (Sep 3-7) into a single "week=1" bucket. We used to split them with a dates=X-Y range query,
+# but ESPN deprecated/blocked date-range queries platform-wide around Sept 15, 2026 (confirmed
+# by multiple independent developers hitting the exact "Failed to get events endpoint" error --
+# not specific to us). Fix: fetch the merged week=1 bucket once and split Week 0 vs Week 1
+# ourselves by each game's actual date instead of asking ESPN to range-filter it.
+WEEK0_WEEK1_SPLIT = "2026-09-01T00:00:00Z"
 ESPN_WEEK_PARAMS = (
-    [{"dates": "20260828-20260830"},               # Week 0: Sat Aug 29 openers
-     {"dates": "20260903-20260908"}]                # Week 1: Thu 9/3 - Mon 9/7
+    [{"week": 1, "seasontype": 2, "date_split": "before"},  # Week 0: openers before Sep 1
+     {"week": 1, "seasontype": 2, "date_split": "after"}]   # Week 1: true Week 1 games on/after Sep 1
     + [{"week": i + 2, "seasontype": 2} for i in range(14)]  # Week 2 - Week 15
     + [{"week": 1, "seasontype": 3}]                # Postseason
 )
@@ -191,14 +198,12 @@ HEADERS = {
 }
 
 
-def fetch_week(week_idx, attempts=3):
-    params = ESPN_WEEK_PARAMS[week_idx]
-    if "dates" in params:
-        qs = f"dates={params['dates']}"
-    else:
-        qs = f"week={params['week']}&seasontype={params['seasontype']}&year=2026"
-    url = f"https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&{qs}&limit=100"
+_fetch_cache = {}  # url -> parsed response JSON, cleared at the start of each main() run
 
+
+def _fetch_raw(url, attempts=3):
+    if url in _fetch_cache:
+        return _fetch_cache[url]
     last_err = None
     for attempt in range(1, attempts + 1):
         try:
@@ -210,7 +215,8 @@ def fetch_week(week_idx, attempts=3):
                 # HTTP error status -- raise_for_status() doesn't catch this, so check for it
                 # explicitly rather than silently treating it as "zero games this week".
                 raise RuntimeError(f"ESPN response had no 'events' key: {data}")
-            return data["events"]
+            _fetch_cache[url] = data
+            return data
         except Exception as e:
             last_err = e
             if attempt < attempts:
@@ -218,7 +224,30 @@ def fetch_week(week_idx, attempts=3):
     raise last_err
 
 
+def fetch_week(week_idx, attempts=3):
+    params = ESPN_WEEK_PARAMS[week_idx]
+    qs = f"week={params['week']}&seasontype={params['seasontype']}&year=2026"
+    url = f"https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&{qs}&limit=100"
+    # Week 0 and Week 1 both request the same underlying week=1 URL -- the cache means we only
+    # actually hit the network once for the pair, then split the results below by date.
+    data = _fetch_raw(url, attempts=attempts)
+    events = data["events"]
+
+    if params.get("date_split"):
+        from datetime import datetime as _dt
+        cutoff = _dt.fromisoformat(WEEK0_WEEK1_SPLIT.replace("Z", "+00:00"))
+        def _event_dt(ev):
+            return _dt.fromisoformat(ev["date"].replace("Z", "+00:00"))
+        if params["date_split"] == "before":
+            events = [ev for ev in events if _event_dt(ev) < cutoff]
+        else:
+            events = [ev for ev in events if _event_dt(ev) >= cutoff]
+
+    return events
+
+
 def main():
+    _fetch_cache.clear()
     with open(DRAFT_PATH) as f:
         draft = json.load(f)
     people = list(draft.keys())
