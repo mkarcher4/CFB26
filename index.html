@@ -28,9 +28,7 @@
     font-family: "Helvetica Neue", Arial, sans-serif;
     color: var(--chalk);
     min-height:100vh;
-    background:
-      repeating-linear-gradient(0deg, var(--turf) 0px, var(--turf) 78px, var(--turf-light) 78px, var(--turf-light) 80px),
-      var(--turf);
+    background: var(--turf);
   }
   .display{
     font-family: "Arial Narrow", "Helvetica Neue Condensed", Arial, sans-serif;
@@ -83,12 +81,14 @@
   /* Nav */
   .nav{
     display:flex; gap:8px; margin:18px 0 16px; border-bottom: 2px solid var(--line); padding-bottom:0;
+    overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none;
   }
+  .nav::-webkit-scrollbar{ display:none; }
   .nav button{
-    background:none; border:none; cursor:pointer;
+    background:none; border:none; cursor:pointer; flex:0 0 auto;
     font-family:inherit; color: var(--steel);
     padding: 10px 4px; margin-right: 18px;
-    font-size:14px; letter-spacing:0.14em; text-transform:uppercase;
+    font-size:14px; letter-spacing:0.14em; text-transform:uppercase; white-space:nowrap;
     border-bottom: 3px solid transparent;
   }
   .nav button.active{ color: var(--amber); border-bottom-color: var(--amber); }
@@ -390,10 +390,12 @@ let schedState = {}; // schedState[person][teamIndex][weekIdx] = { opp, fcs, sta
 let scheduleUpdatedAt = null; // timestamp string from data/schedule.json, shown in the UI
 let liveSyncStatus = "idle"; // "idle" | "syncing" | "done" | "unavailable" -- background client-side ESPN sync, on top of the static baseline
 let currentView = "standings";
-let currentPerson = PEOPLE[0];
+let currentPerson = "ALL"; // "ALL" or a specific coach's name -- drives the Rosters tab filter
 let currentWeek = 0;
 let weekManuallySelected = false; // once the user picks a week from the dropdown, stop auto-advancing it for them
 let weeklyStandingsWeek = 0; // independent week selector for the Weekly Standings table on the Standings tab
+let weeklyStandingsManuallySelected = false;
+let scheduleTeamFilter = "ALL"; // "ALL" or a person's name -- filters the Schedule tab to one coach's 14 teams
 
 // Commissioner gate for the Rosters tab. Change this PIN to whatever you like.
 const COMMISSIONER_PIN = "gridiron26";
@@ -916,6 +918,7 @@ async function autoSyncFromESPN(){
     }
     liveSyncStatus = anyAttempt ? (anySuccess ? "done" : "unavailable") : "done";
     if(!weekManuallySelected) currentWeek = computeCurrentWeekDefault();
+    if(!weeklyStandingsManuallySelected) weeklyStandingsWeek = computeCurrentWeekDefault();
   }finally{
     if(currentView === 'standings') renderStandings();
     if(currentView === 'schedule') renderSchedule();
@@ -943,6 +946,7 @@ async function load(){
   buildTeamOwners();
   ensureSchedState();
   currentWeek = computeCurrentWeekDefault();
+  weeklyStandingsWeek = computeCurrentWeekDefault();
 }
 
 // "Current week" defaults to the most advanced week that has any data at all -- i.e. the
@@ -1001,34 +1005,57 @@ function renderStandings(){
   // ---- Weekly Standings -----------------------------------------------------------
   html += `<div class="sub-table-wrap">
     <div class="sub-table-head display">Weekly Standings</div>
-    <div class="week-tabs" style="margin-bottom:10px;">`;
+    <select class="sched-week-select" id="weeklyStandingsSelect">`;
   WEEKS.forEach((w, wi)=>{
-    html += `<button class="week-tab weekly-standings-tab ${wi===weeklyStandingsWeek?'active':''}" data-week="${wi}">${w}</button>`;
+    html += `<option value="${wi}" ${wi===weeklyStandingsWeek?'selected':''}>${w}</option>`;
   });
-  html += `</div>`;
+  html += `</select>`;
   const weeklyRanked = PEOPLE.map(p=>({ person:p, points: personWeekPoints(p, weeklyStandingsWeek) }))
     .sort((a,b)=> b.points - a.points);
-  html += `<div class="table-scroll"><table class="data-table"><thead><tr><th>Rank</th><th>Coach</th><th class="num">Points</th></tr></thead><tbody>`;
+  const weeklyMax = Math.max(1, ...weeklyRanked.map(r=>Math.abs(r.points)));
+  html += `<div class="scoreboard" style="padding:14px 18px;">`;
   weeklyRanked.forEach((r, i)=>{
-    html += `<tr><td class="mono">${i+1}</td><td>${r.person}</td><td class="num mono ${r.points>0?'pos':(r.points<0?'neg-money':'')}">${r.points>0?'+':''}${r.points}</td></tr>`;
+    const pct = Math.max(3, Math.round((Math.abs(r.points)/weeklyMax)*100));
+    html += `
+      <div class="rank-row">
+        <div class="rank-num mono">${i+1}</div>
+        <div>
+          <div class="rank-name-row">
+            <div class="rank-name display">${r.person}</div>
+            <div class="rank-score mono">${r.points>0?'+':''}${r.points}</div>
+          </div>
+          <div class="track"><div class="track-fill" style="width:${pct}%;"></div></div>
+        </div>
+        <div></div>
+      </div>`;
   });
-  html += `</tbody></table></div></div>`;
+  html += `</div></div>`;
 
   // ---- Weekly Winners ---------------------------------------------------------------
   html += `<div class="sub-table-wrap">
     <div class="sub-table-head display">Weekly Winners</div>
-    <div class="table-scroll"><table class="data-table"><thead><tr><th>Week</th><th>Winner</th><th class="num">Points</th></tr></thead><tbody>`;
+    <div class="scoreboard" style="padding:14px 18px;">`;
   let anyWeeklyWinner = false;
   for(let wi=WEEKLY_PRIZE_FIRST_WEEK; wi<=REGULAR_SEASON_LAST_WEEK; wi++){
     const info = weekWinnerInfo(wi);
     if(!info) continue;
     anyWeeklyWinner = true;
     const names = info.winners.join(' & ');
-    const tieNote = info.stillTied ? ' (still tied — split)' : (info.tieBroken ? ' (won tiebreak)' : '');
-    html += `<tr><td>${WEEKS[wi]}</td><td>${names}${tieNote}</td><td class="num mono pos">+${info.points}</td></tr>`;
+    const tieNote = info.stillTied ? ' (split)' : (info.tieBroken ? ' (tiebreak)' : '');
+    html += `
+      <div class="rank-row">
+        <div class="rank-num mono" style="font-size:13px; color:var(--steel);">${WEEKS[wi]}</div>
+        <div>
+          <div class="rank-name-row">
+            <div class="rank-name display" style="font-size:14px;">${names}${tieNote}</div>
+            <div class="rank-score mono">+${info.points}</div>
+          </div>
+        </div>
+        <div></div>
+      </div>`;
   }
-  if(!anyWeeklyWinner) html += `<tr><td colspan="3" style="color:var(--steel); font-style:italic;">No weeks final yet.</td></tr>`;
-  html += `</tbody></table></div></div>`;
+  if(!anyWeeklyWinner) html += `<div style="color:var(--steel); font-style:italic; font-size:13px; padding:8px 0;">No weeks final yet.</div>`;
+  html += `</div></div>`;
 
   // ---- Money Owed --------------------------------------------------------------------
   const money = computeMoneyOwed();
@@ -1065,29 +1092,72 @@ function renderStandings(){
     });
   });
 
-  el.querySelectorAll('.weekly-standings-tab').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      weeklyStandingsWeek = Number(btn.dataset.week);
-      renderStandings();
-    });
+  const weeklyStandingsSelect = document.getElementById('weeklyStandingsSelect');
+  if(weeklyStandingsSelect) weeklyStandingsSelect.addEventListener('change', ()=>{
+    weeklyStandingsWeek = Number(weeklyStandingsSelect.value);
+    weeklyStandingsManuallySelected = true;
+    renderStandings();
   });
+}
+
+function renderTeamCard(person, i, team){
+  const stats = state[person][i];
+  const auto = getAutoRecord(person, i);
+  const score = teamScore(person, i);
+  let html = `<div class="card" data-idx="${i}" data-person="${person}">
+    <div class="card-head">
+      <div>
+        <div class="card-team display">${team}</div>
+        <div class="card-round">Round ${i+1} pick</div>
+      </div>
+      <div class="card-total mono ${score<0?'neg':''}">${score}</div>
+    </div>
+    <div class="stat-group">
+      <div class="stat-group-label">Auto-Tracked (from Schedule sync)</div>
+      <div class="stat-line"><label style="cursor:default;">Wins</label><span class="mono" style="color:var(--amber);">${auto.wins}</span><span class="pts mono">+1/ea</span></div>
+      <div class="stat-line"><label style="cursor:default;">Losses to FCS team</label><span class="mono" style="color:${auto.fcsLoss?'var(--crimson)':'var(--chalk-dim)'};">${auto.fcsLoss}</span><span class="pts mono">-1/ea</span></div>
+      ${auto.otherLoss ? `<div class="stat-line" style="opacity:0.6;"><label style="cursor:default;">Other losses (no points)</label><span class="mono">${auto.otherLoss}</span><span class="pts mono">0</span></div>` : ''}
+    </div>`;
+  FIELD_GROUPS.forEach(g=>{
+    html += `<div class="stat-group"><div class="stat-group-label">${g.label}</div>`;
+    g.fields.forEach(f=>{
+      const val = stats[f.key];
+      const dis = commissionerUnlocked ? '' : 'disabled';
+      if(f.type==="bool"){
+        html += `<div class="stat-line">
+          <label>
+            <input type="checkbox" data-key="${f.key}" ${val?'checked':''} ${dis}>
+            ${f.label}
+          </label>
+          <span class="pts mono">${f.pts>0?'+':''}${f.pts}</span>
+        </div>`;
+      } else {
+        html += `<div class="stat-line">
+          <label style="cursor:default;">${f.label}</label>
+          <input type="number" min="0" data-key="${f.key}" value="${val}" ${dis}>
+          <span class="pts mono">${f.pts>0?'+':''}${f.pts}/ea</span>
+        </div>`;
+      }
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+  return html;
 }
 
 function renderRosters(){
   const el = document.getElementById('rostersView');
-  let html = '<div class="jersey-row">';
-  PEOPLE.forEach((p,i)=>{
-    html += `<button class="jersey display ${p===currentPerson?'active':''}" data-person="${p}"><span class="num">${String(i+1).padStart(2,'0')}</span>${p}</button>`;
-  });
-  html += '</div>';
 
-  html += `<div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:8px;">
-    <div class="display" style="font-size:20px; color:var(--amber);">${currentPerson}</div>
-    <div style="display:flex; align-items:center; gap:10px;">
-      <button class="jersey display" id="commissionerBtn" style="cursor:pointer; ${commissionerUnlocked?'border-color:var(--amber); color:var(--amber);':''}">${commissionerUnlocked ? '\u{1F513} Commissioner Mode — Lock' : '\u{1F512} Commissioner Login'}</button>
-      ${commissionerUnlocked ? `<button class="jersey display" id="downloadManualBtn" style="cursor:pointer;">Download manual.json</button>` : ''}
-      <div class="mono" style="font-size:16px;">Total: ${personScore(currentPerson)}</div>
-    </div>
+  let html = `<select class="sched-week-select" id="rosterCoachSelect">
+    <option value="ALL" ${currentPerson==='ALL'?'selected':''}>All Coaches</option>`;
+  PEOPLE.forEach(p=>{
+    html += `<option value="${p}" ${currentPerson===p?'selected':''}>${p}</option>`;
+  });
+  html += `</select>`;
+
+  html += `<div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+    <button class="jersey display" id="commissionerBtn" style="cursor:pointer; ${commissionerUnlocked?'border-color:var(--amber); color:var(--amber);':''}">${commissionerUnlocked ? '\u{1F513} Commissioner Mode — Lock' : '\u{1F512} Commissioner Login'}</button>
+    ${commissionerUnlocked ? `<button class="jersey display" id="downloadManualBtn" style="cursor:pointer;">Download manual.json</button>` : ''}
   </div>`;
   if(!commissionerUnlocked){
     html += `<div style="font-size:11px; color:var(--steel); margin:-6px 0 14px;">Manual scoring fields are locked. Only the Commissioner can edit them.</div>`;
@@ -1095,58 +1165,50 @@ function renderRosters(){
     html += `<div style="font-size:11px; color:var(--steel); margin:-6px 0 14px;">Edits here only apply in your browser until you download manual.json and commit it to the repo -- that's what publishes the change for everyone else.</div>`;
   }
 
-  html += '<div class="team-grid">';
-  DRAFT[currentPerson].forEach((team, i)=>{
-    const stats = state[currentPerson][i];
-    const auto = getAutoRecord(currentPerson, i);
-    const score = teamScore(currentPerson, i);
-    html += `<div class="card" data-idx="${i}">
-      <div class="card-head">
-        <div>
-          <div class="card-team display">${team}</div>
-          <div class="card-round">Round ${i+1} pick</div>
-        </div>
-        <div class="card-total mono ${score<0?'neg':''}">${score}</div>
-      </div>
-      <div class="stat-group">
-        <div class="stat-group-label">Auto-Tracked (from Schedule sync)</div>
-        <div class="stat-line"><label style="cursor:default;">Wins</label><span class="mono" style="color:var(--amber);">${auto.wins}</span><span class="pts mono">+1/ea</span></div>
-        <div class="stat-line"><label style="cursor:default;">Losses to FCS team</label><span class="mono" style="color:${auto.fcsLoss?'var(--crimson)':'var(--chalk-dim)'};">${auto.fcsLoss}</span><span class="pts mono">-1/ea</span></div>
-        ${auto.otherLoss ? `<div class="stat-line" style="opacity:0.6;"><label style="cursor:default;">Other losses (no points)</label><span class="mono">${auto.otherLoss}</span><span class="pts mono">0</span></div>` : ''}
-      </div>`;
-    FIELD_GROUPS.forEach(g=>{
-      html += `<div class="stat-group"><div class="stat-group-label">${g.label}</div>`;
-      g.fields.forEach(f=>{
-        const val = stats[f.key];
-        const dis = commissionerUnlocked ? '' : 'disabled';
-        if(f.type==="bool"){
-          html += `<div class="stat-line">
-            <label>
-              <input type="checkbox" data-key="${f.key}" ${val?'checked':''} ${dis}>
-              ${f.label}
-            </label>
-            <span class="pts mono">${f.pts>0?'+':''}${f.pts}</span>
-          </div>`;
-        } else {
-          html += `<div class="stat-line">
-            <label style="cursor:default;">${f.label}</label>
-            <input type="number" min="0" data-key="${f.key}" value="${val}" ${dis}>
-            <span class="pts mono">${f.pts>0?'+':''}${f.pts}/ea</span>
-          </div>`;
-        }
-      });
-      html += `</div>`;
+  // ---- Team Season Points (every drafted team-slot, ranked) -- moved here from Schedule ----
+  const teamRanked = [];
+  PEOPLE.forEach(person=>{
+    DRAFT[person].forEach((team, idx)=>{
+      teamRanked.push({ person, team, score: teamScore(person, idx) });
     });
-    html += `</div>`;
   });
-  html += '</div>';
+  teamRanked.sort((a,b)=> b.score - a.score);
+  html += `<div class="sub-table-wrap" style="margin-top:0;">
+    <div class="sub-table-head display">Team Season Points</div>
+    <div class="table-scroll" style="max-height:340px; overflow-y:auto;">
+      <table class="data-table"><thead><tr><th>Rank</th><th>Team</th><th>Coach</th><th class="num">Points</th></tr></thead><tbody>`;
+  teamRanked.forEach((t, i)=>{
+    html += `<tr><td class="mono">${i+1}</td><td>${t.team}</td><td style="color:var(--steel);">${t.person}</td><td class="num mono ${t.score>0?'pos':(t.score<0?'neg-money':'')}">${t.score>0?'+':''}${t.score}</td></tr>`;
+  });
+  html += `</tbody></table></div></div>`;
+
+  if(currentPerson === 'ALL'){
+    PEOPLE.forEach(person=>{
+      html += `<div class="sched-person" style="margin-top:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+          <div class="sched-person-head display" style="margin-bottom:0; border-bottom:none; padding-bottom:0;">${person}</div>
+          <div class="mono person-total-display" data-for="${person}" style="font-size:14px;">Total: ${personScore(person)}</div>
+        </div>
+        <div class="team-grid">`;
+      DRAFT[person].forEach((team, i)=>{ html += renderTeamCard(person, i, team); });
+      html += `</div></div>`;
+    });
+  } else {
+    html += `<div style="margin-bottom:12px; display:flex; justify-content:space-between; align-items:baseline;">
+      <div class="display" style="font-size:20px; color:var(--amber);">${currentPerson}</div>
+      <div class="mono person-total-display" data-for="${currentPerson}" style="font-size:16px;">Total: ${personScore(currentPerson)}</div>
+    </div>`;
+    html += '<div class="team-grid">';
+    DRAFT[currentPerson].forEach((team, i)=>{ html += renderTeamCard(currentPerson, i, team); });
+    html += '</div>';
+  }
+
   el.innerHTML = html;
 
-  el.querySelectorAll('.jersey').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      currentPerson = btn.dataset.person;
-      renderRosters();
-    });
+  const rosterCoachSelect = document.getElementById('rosterCoachSelect');
+  if(rosterCoachSelect) rosterCoachSelect.addEventListener('change', ()=>{
+    currentPerson = rosterCoachSelect.value;
+    renderRosters();
   });
 
   const commissionerBtn = document.getElementById('commissionerBtn');
@@ -1172,11 +1234,12 @@ function renderRosters(){
 
   el.querySelectorAll('.card').forEach(card=>{
     const idx = Number(card.dataset.idx);
+    const person = card.dataset.person;
     card.querySelectorAll('input[type=checkbox]').forEach(input=>{
       input.addEventListener('change', ()=>{
         if(!commissionerUnlocked) return;
-        state[currentPerson][idx][input.dataset.key] = input.checked;
-        updateCardTotal(card, idx);
+        state[person][idx][input.dataset.key] = input.checked;
+        updateCardTotal(card);
         scheduleSave();
       });
     });
@@ -1185,22 +1248,24 @@ function renderRosters(){
         if(!commissionerUnlocked) return;
         let v = Math.max(0, Math.round(Number(input.value)||0));
         input.value = v;
-        state[currentPerson][idx][input.dataset.key] = v;
-        updateCardTotal(card, idx);
+        state[person][idx][input.dataset.key] = v;
+        updateCardTotal(card);
         scheduleSave();
       });
     });
   });
 }
 
-function updateCardTotal(card, idx){
-  const score = teamScore(currentPerson, idx);
+function updateCardTotal(card){
+  const idx = Number(card.dataset.idx);
+  const person = card.dataset.person;
+  const score = teamScore(person, idx);
   const totalEl = card.querySelector('.card-total');
   totalEl.textContent = score;
   totalEl.classList.toggle('neg', score < 0);
-  // also refresh header total
-  const headerTotal = document.querySelector('#rostersView > div:nth-child(2) .mono');
-  if(headerTotal) headerTotal.textContent = `Total: ${personScore(currentPerson)}`;
+  document.querySelectorAll(`.person-total-display[data-for="${person}"]`).forEach(el=>{
+    el.textContent = `Total: ${personScore(person)}`;
+  });
 }
 
 function findMatchup(person, idx, oppText){
@@ -1226,6 +1291,13 @@ function renderSchedule(){
   });
   html += `</select>`;
 
+  html += `<select class="sched-week-select" id="teamFilterSelect">
+    <option value="ALL" ${scheduleTeamFilter==='ALL'?'selected':''}>All Coaches</option>`;
+  PEOPLE.forEach(p=>{
+    html += `<option value="${p}" ${scheduleTeamFilter===p?'selected':''}>${p}</option>`;
+  });
+  html += `</select>`;
+
   const baseline = scheduleUpdatedAt
     ? `Synced ${new Date(scheduleUpdatedAt).toLocaleString()}.`
     : `No baseline sync yet.`;
@@ -1245,8 +1317,9 @@ function renderSchedule(){
   // i.e. some other drafted team has a game logged for it -- otherwise an unsynced week would
   // wrongly show every team as having a bye before any data has even been pulled.
   const weekKnown = weekHasData[currentWeek];
+  const peopleToShow = scheduleTeamFilter === 'ALL' ? PEOPLE : [scheduleTeamFilter];
 
-  PEOPLE.forEach(person=>{
+  peopleToShow.forEach(person=>{
     html += `<div class="sched-person"><div class="sched-person-head display">${person}</div>`;
     DRAFT[person].forEach((team, i)=>{
       const slot = schedState[person][i][currentWeek];
@@ -1306,6 +1379,12 @@ function renderSchedule(){
   if(weekSelect) weekSelect.addEventListener('change', ()=>{
     currentWeek = Number(weekSelect.value);
     weekManuallySelected = true;
+    renderSchedule();
+  });
+
+  const teamFilterSelect = document.getElementById('teamFilterSelect');
+  if(teamFilterSelect) teamFilterSelect.addEventListener('change', ()=>{
+    scheduleTeamFilter = teamFilterSelect.value;
     renderSchedule();
   });
 }
