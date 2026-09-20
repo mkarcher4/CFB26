@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>CFB26 Pool Tracker</title>
 <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16.png">
@@ -22,7 +23,7 @@
     --line: rgba(244,241,230,0.14);
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;background:var(--turf);}
+  html,body{margin:0;padding:0;background:var(--turf); max-width:100%; overflow-x:hidden;}
   body{
     font-family: "Helvetica Neue", Arial, sans-serif;
     color: var(--chalk);
@@ -41,7 +42,7 @@
     font-family: "SF Mono","Courier New", monospace;
     font-variant-numeric: tabular-nums;
   }
-  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px;}
+  .wrap{max-width:980px;margin:0 auto;padding:20px 16px 60px; overflow-x:hidden;}
 
   /* Header */
   .scoreboard{
@@ -205,15 +206,16 @@
     font-size:14px; color: var(--amber); border-bottom: 1px solid var(--line);
     padding-bottom:6px; margin-bottom:10px;
   }
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
   table.data-table{
-    width:100%; border-collapse:collapse; font-size:12.5px;
+    width:100%; min-width:480px; border-collapse:collapse; font-size:12.5px;
   }
   table.data-table th{
     text-align:left; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
-    color: var(--steel); padding:5px 8px; border-bottom: 1px solid var(--line);
+    color: var(--steel); padding:5px 8px; border-bottom: 1px solid var(--line); white-space:nowrap;
   }
   table.data-table td{
-    padding:6px 8px; border-bottom: 1px solid var(--line); vertical-align:middle;
+    padding:6px 8px; border-bottom: 1px solid var(--line); vertical-align:middle; white-space:nowrap;
   }
   table.data-table tr:last-child td{ border-bottom:none; }
   table.data-table td.num, table.data-table th.num{ text-align:right; font-family:"SF Mono","Courier New",monospace; }
@@ -244,9 +246,9 @@
     display:flex; justify-content:space-between; align-items:center; gap:10px;
     padding:11px 2px; border-bottom: 1px solid var(--line);
   }
-  .sched-row-main{ min-width:0; }
-  .sched-team{ font-size:15px; color: var(--chalk); font-weight:600; }
-  .sched-opp-text{ font-size:12.5px; color: var(--chalk-dim); margin-top:2px; }
+  .sched-row-main{ flex:1 1 auto; min-width:0; }
+  .sched-team{ font-size:15px; color: var(--chalk); font-weight:600; overflow-wrap:break-word; }
+  .sched-opp-text{ font-size:12.5px; color: var(--chalk-dim); margin-top:2px; overflow-wrap:break-word; }
   .sched-opp-text.matchup{ color: var(--amber); }
   .sched-opp-text.self{ color: var(--crimson); }
   .sched-opp-text.undrafted{ color: var(--steel); }
@@ -1006,16 +1008,16 @@ function renderStandings(){
   html += `</div>`;
   const weeklyRanked = PEOPLE.map(p=>({ person:p, points: personWeekPoints(p, weeklyStandingsWeek) }))
     .sort((a,b)=> b.points - a.points);
-  html += `<table class="data-table"><thead><tr><th>Rank</th><th>Coach</th><th class="num">Points</th></tr></thead><tbody>`;
+  html += `<div class="table-scroll"><table class="data-table"><thead><tr><th>Rank</th><th>Coach</th><th class="num">Points</th></tr></thead><tbody>`;
   weeklyRanked.forEach((r, i)=>{
     html += `<tr><td class="mono">${i+1}</td><td>${r.person}</td><td class="num mono ${r.points>0?'pos':(r.points<0?'neg-money':'')}">${r.points>0?'+':''}${r.points}</td></tr>`;
   });
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
 
   // ---- Weekly Winners ---------------------------------------------------------------
   html += `<div class="sub-table-wrap">
     <div class="sub-table-head display">Weekly Winners</div>
-    <table class="data-table"><thead><tr><th>Week</th><th>Winner</th><th class="num">Points</th></tr></thead><tbody>`;
+    <div class="table-scroll"><table class="data-table"><thead><tr><th>Week</th><th>Winner</th><th class="num">Points</th></tr></thead><tbody>`;
   let anyWeeklyWinner = false;
   for(let wi=WEEKLY_PRIZE_FIRST_WEEK; wi<=REGULAR_SEASON_LAST_WEEK; wi++){
     const info = weekWinnerInfo(wi);
@@ -1026,13 +1028,13 @@ function renderStandings(){
     html += `<tr><td>${WEEKS[wi]}</td><td>${names}${tieNote}</td><td class="num mono pos">+${info.points}</td></tr>`;
   }
   if(!anyWeeklyWinner) html += `<tr><td colspan="3" style="color:var(--steel); font-style:italic;">No weeks final yet.</td></tr>`;
-  html += `</tbody></table></div>`;
+  html += `</tbody></table></div></div>`;
 
   // ---- Money Owed --------------------------------------------------------------------
   const money = computeMoneyOwed();
   html += `<div class="sub-table-wrap">
     <div class="sub-table-head display">Money Owed</div>
-    <table class="data-table"><thead><tr>
+    <div class="table-scroll"><table class="data-table"><thead><tr>
       <th>Coach</th><th class="num">Buy-In</th><th class="num">Weekly Wins</th>
       <th class="num">Reg. Season</th><th class="num">Postseason</th><th class="num">Final Place</th><th class="num">Net</th>
     </tr></thead><tbody>`;
@@ -1048,7 +1050,7 @@ function renderStandings(){
       <td class="num mono" style="font-size:13px; color:${m.net>=0?'var(--amber)':'var(--crimson)'};">${m.net>=0?'+$':'-$'}${Math.abs(m.net).toFixed(2).replace(/\.00$/,'')}</td>
     </tr>`;
   });
-  html += `</tbody></table>
+  html += `</tbody></table></div>
     <div style="font-size:10px; color:var(--steel); margin-top:8px;">
       $${BUY_IN} buy-in per coach ($${BUY_IN*PEOPLE.length} pool total) · +$${WEEKLY_WINNER_PRIZE} weekly winner · +$${REG_SEASON_LEADER_PRIZE} regular-season leader (after Week 15) · +$${POSTSEASON_LEADER_PRIZE} most postseason points · final standings pay $${FINAL_PLACE_PRIZES[0]}/$${FINAL_PLACE_PRIZES[1]}/$${FINAL_PLACE_PRIZES[2]} for 1st/2nd/3rd. Net updates live as results come in, so early-season numbers are just a running projection.
     </div>
