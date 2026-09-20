@@ -236,10 +236,17 @@
     padding-bottom:5px; margin-bottom:8px;
   }
   .sched-row{
-    display:grid; grid-template-columns: 1fr 1fr auto; gap:8px; align-items:center;
-    padding:6px 0; border-bottom: 1px dotted var(--line);
+    padding:9px 0; border-bottom: 1px dotted var(--line);
   }
-  .sched-team{ font-size:13px; color: var(--chalk); }
+  .sched-row-top{
+    display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+  }
+  .sched-row-bottom{
+    display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;
+    margin-top:4px;
+  }
+  .sched-team{ font-size:14px; color: var(--chalk); font-weight:600; }
+  .sched-opp-text{ font-size:12.5px; color: var(--chalk-dim); }
   .sched-opp-input{
     background: var(--turf); border:1.5px solid var(--steel); border-radius:3px;
     color: var(--chalk); font-family:inherit; font-size:12px; padding:4px 6px; width:100%;
@@ -252,6 +259,9 @@
   .sched-badge.matchup{ background: rgba(242,169,59,0.18); color: var(--amber); border:1px solid var(--amber-dim); }
   .sched-badge.undrafted{ background: rgba(124,139,133,0.18); color: var(--steel); border:1px solid var(--steel); }
   .sched-badge.self{ background: rgba(193,68,59,0.15); color: var(--crimson); border:1px solid var(--crimson); }
+  .sched-badge.win{ background: rgba(242,169,59,0.22); color: var(--amber); border:1.5px solid var(--amber); font-weight:800; font-size:11px; }
+  .sched-badge.loss{ background: rgba(193,68,59,0.12); color: var(--crimson); border:1px solid var(--crimson); font-weight:600; font-size:10px; }
+  .sched-badge.loss-fcs{ background: var(--crimson); color: var(--chalk); border:1.5px solid var(--crimson); font-weight:900; font-size:11px; box-shadow: 0 0 6px rgba(193,68,59,0.55); }
   .sched-fcs-toggle{ display:flex; align-items:center; gap:4px; font-size:9px; color:var(--steel); cursor:pointer; white-space:nowrap; }
   .sched-fcs-toggle input{ width:12px; height:12px; }
   .sched-legend{
@@ -1205,6 +1215,9 @@ function renderSchedule(){
     <span><span class="dot" style="background:var(--amber);"></span>Pool matchup (two persons' teams face off)</span>
     <span><span class="dot" style="background:var(--crimson);"></span>Same-person matchup (owns both teams)</span>
     <span><span class="dot" style="background:var(--steel);"></span>Undrafted / FCS opponent</span>
+    <span><span class="sched-badge win" style="padding:1px 6px;">W +1</span>Win</span>
+    <span><span class="sched-badge loss" style="padding:1px 6px;">L 0</span>Loss</span>
+    <span><span class="sched-badge loss-fcs" style="padding:1px 6px;">L -1</span>Loss to FCS team</span>
   </div>`;
 
   // A team with no opponent counts as a BYE only once we actually know this week's slate --
@@ -1220,46 +1233,56 @@ function renderSchedule(){
 
       if(isBye){
         html += `<div class="sched-row" data-idx="${i}">
-          <div class="sched-team">${team}</div>
-          <div style="color:var(--steel); font-size:12px; font-style:italic;">No game scheduled</div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span class="mono" style="font-size:12px; color:var(--steel); min-width:18px; text-align:right;">0</span>
+          <div class="sched-row-top">
+            <span class="sched-team">${team}</span>
             <span class="sched-badge" style="color:var(--steel); border-color:var(--steel);">BYE</span>
+          </div>
+          <div class="sched-row-bottom">
+            <span class="sched-opp-text" style="font-style:italic;">No game scheduled</span>
           </div>
         </div>`;
         return;
       }
       if(!slot.opp){
         html += `<div class="sched-row" data-idx="${i}">
-          <div class="sched-team">${team}</div>
-          <div style="color:var(--steel); font-size:12px; font-style:italic;">Not synced yet</div>
-          <div></div>
+          <div class="sched-row-top">
+            <span class="sched-team">${team}</span>
+          </div>
+          <div class="sched-row-bottom">
+            <span class="sched-opp-text" style="font-style:italic; color:var(--steel);">Not synced yet</span>
+          </div>
         </div>`;
         return;
       }
 
       const others = findMatchup(person, i, slot.opp);
-      let badge = '';
+      let matchupBadge = '';
       if(others){
         const selfMatch = others.some(o=>o.person===person);
         const label = others.map(o=>`${o.person}'s ${DRAFT[o.person][o.idx]}`).join(', ');
-        badge = `<span class="sched-badge ${selfMatch?'self':'matchup'}" title="${label}">${selfMatch? 'Self: '+others[0].person : 'vs '+others[0].person}</span>`;
+        matchupBadge = `<span class="sched-badge ${selfMatch?'self':'matchup'}" title="${label}">${selfMatch? 'Self: '+others[0].person : 'vs '+others[0].person}</span>`;
       } else if(slot.fcs){
-        badge = `<span class="sched-badge undrafted">Undrafted</span>`;
+        matchupBadge = `<span class="sched-badge undrafted">Undrafted</span>`;
       } else {
-        badge = `<span class="sched-badge" style="color:var(--steel);">non-pool</span>`;
+        matchupBadge = `<span class="sched-badge" style="color:var(--steel);">non-pool</span>`;
       }
+
       const pts = slotPoints(slot);
-      const ptsColor = pts===1 ? 'var(--amber)' : pts===-1 ? 'var(--crimson)' : 'var(--chalk-dim)';
-      const ptsLabel = pts===null ? '—' : (pts>0 ? '+1' : String(pts));
-      const scoreText = slot.score ? slot.score : (slot.status || '—');
+      let resultBadge;
+      if(pts === 1) resultBadge = `<span class="sched-badge win">W&nbsp;+1</span>`;
+      else if(pts === 0) resultBadge = `<span class="sched-badge loss">L&nbsp;0</span>`;
+      else if(pts === -1) resultBadge = `<span class="sched-badge loss-fcs">L&nbsp;-1</span>`;
+      else resultBadge = `<span class="mono" style="font-size:11px; color:var(--steel);">${slot.status || 'Scheduled'}</span>`;
+
+      const scoreSuffix = slot.score ? ` · ${slot.score}` : '';
       html += `<div class="sched-row" data-idx="${i}">
-        <div class="sched-team">${team}</div>
-        <div style="font-size:13px; color:var(--chalk-dim);">vs ${slot.opp}</div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span class="mono" style="font-size:12px; color:var(--steel);">${scoreText}</span>
-          ${badge}
-          <span class="mono" style="font-size:12px; color:${ptsColor}; min-width:22px; text-align:right;" title="Points awarded for this game">${ptsLabel}</span>
+        <div class="sched-row-top">
+          <span class="sched-team">${team}</span>
+          ${resultBadge}
+        </div>
+        <div class="sched-row-bottom">
+          <span class="sched-opp-text">vs ${slot.opp}${scoreSuffix}</span>
+          ${matchupBadge}
         </div>
       </div>`;
     });
