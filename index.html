@@ -357,12 +357,15 @@ const ALL_FIELDS = FIELD_GROUPS.flatMap(g=>g.fields);
 
 const WEEKS = ["Week 0","Week 1","Week 2","Week 3","Week 4","Week 5","Week 6","Week 7","Week 8","Week 9","Week 10","Week 11","Week 12","Week 13","Week 14","Week 15","Postseason"];
 // ESPN's own "week" numbering merges the Aug 29 Week 0 openers and the true Week 1 slate
-// (Sep 3-7) into a single "week=1" bucket, so Week 0 and Week 1 are fetched by explicit date
-// range instead. Used by the client-side background sync below (GitHub Actions' IPs get
-// blocked by ESPN with a 403, but a real visitor's browser is not a datacenter IP).
+// (Sep 3-7) into a single "week=1" bucket. We used to split them with a dates=X-Y range query,
+// but ESPN deprecated/blocked date-range queries platform-wide around Sept 15, 2026 (confirmed
+// by multiple independent developers hitting the same "Failed to get events endpoint" error --
+// this is not specific to us or to GitHub Actions). Fix: fetch the merged week=1 bucket once and
+// split Week 0 vs Week 1 ourselves by each game's actual date instead of asking ESPN to filter it.
+const WEEK0_WEEK1_SPLIT = "2026-09-01T00:00:00Z";
 const ESPN_WEEK_PARAMS = [
-  { dates: "20260828-20260830" },  // Week 0: Sat Aug 29 openers
-  { dates: "20260903-20260908" },  // Week 1: Thu 9/3 - Mon 9/7
+  { week: 1, seasontype: 2, dateSplit: "before" },  // Week 0: openers before Sep 1
+  { week: 1, seasontype: 2, dateSplit: "after" },   // Week 1: true Week 1 games on/after Sep 1
   ...Array.from({ length: 14 }, (_, i) => ({ week: i + 2, seasontype: 2 })), // Week 2 - Week 15
   { week: 1, seasontype: 3 },      // Postseason
 ];
@@ -803,18 +806,30 @@ function isWeekComplete(weekIdx){
 // detection, but a real visitor's browser is ordinary residential/mobile traffic and isn't
 // blocked. Merges over whatever the static data/schedule.json baseline already had -- never
 // writes anywhere, this only affects what this one visitor sees in this one page load.
+let espnFetchCache = {}; // url -> parsed response, cleared at the start of each autoSyncFromESPN() pass -- Week 0 and Week 1 both request the same underlying week=1 URL, so this avoids fetching it twice
+
 async function syncWeekFromESPNClient(weekIdx){
   const params = ESPN_WEEK_PARAMS[weekIdx];
-  const qs = params.dates
-    ? `dates=${params.dates}`
-    : `week=${params.week}&seasontype=${params.seasontype}&year=2026`;
+  const qs = `week=${params.week}&seasontype=${params.seasontype}&year=2026`;
   const url = `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?groups=80&${qs}&limit=100`;
 
-  const res = await fetch(url);
-  if(!res.ok) throw new Error("HTTP "+res.status);
-  const data = await res.json();
-  if(!data.events) throw new Error("Unexpected ESPN response shape");
-  const events = data.events;
+  let data = espnFetchCache[url];
+  if(!data){
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    data = await res.json();
+    if(!data.events) throw new Error("Unexpected ESPN response shape");
+    espnFetchCache[url] = data;
+  }
+
+  let events = data.events;
+  if(params.dateSplit){
+    const cutoff = new Date(WEEK0_WEEK1_SPLIT).getTime();
+    events = events.filter(ev=>{
+      const t = new Date(ev.date).getTime();
+      return params.dateSplit === "before" ? t < cutoff : t >= cutoff;
+    });
+  }
 
   const fresh = {};
   PEOPLE.forEach(p=>{ fresh[p] = {}; DRAFT[p].forEach((t,i)=>{ fresh[p][i] = { ...schedState[p][i][weekIdx] }; }); });
@@ -861,6 +876,7 @@ async function syncWeekFromESPNClient(weekIdx){
 // requests for weeks that haven't happened yet.
 async function autoSyncFromESPN(){
   liveSyncStatus = "syncing";
+  espnFetchCache = {};
   let anySuccess = false;
   let anyAttempt = false;
   try{
@@ -871,14 +887,16 @@ async function autoSyncFromESPN(){
         await syncWeekFromESPNClient(wi);
         anySuccess = true;
       }catch(e){
+        // A single week's request failing (transient hiccup, ESPN-side issue with that
+        // particular query) shouldn't stop the rest -- try every remaining week rather than
+        // bailing out entirely on the first miss.
         console.warn(`Live ESPN sync failed for ${WEEKS[wi]}:`, e);
-        liveSyncStatus = "unavailable";
-        return; // stop entirely -- if the visitor's own network can't reach ESPN, further weeks won't work either
+        continue;
       }
       if(currentView === 'standings') renderStandings();
       if(currentView === 'schedule') renderSchedule();
       if(currentView === 'rosters') renderRosters();
-      if(!isWeekComplete(wi)) break; // hit the current/live week -- stop here
+      if(!isWeekComplete(wi)) break; // hit the current/live week -- stop advancing further
     }
     liveSyncStatus = anyAttempt ? (anySuccess ? "done" : "unavailable") : "done";
   }finally{
