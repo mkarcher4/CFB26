@@ -232,6 +232,21 @@
   table.data-table tr:last-child td{ border-bottom:none; }
   table.data-table td.num, table.data-table th.num{ text-align:right; font-family:"SF Mono","Courier New",monospace; }
   .pos{ color: var(--amber); }
+
+  /* Stats tab -- maximally condensed, no vertical padding between rows, zebra striping instead
+     of border lines for row separation, so a whole 10-coach table fits on one mobile screen. */
+  table.stats-table{ width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
+  table.stats-table th{
+    text-align:right; font-size:9px; letter-spacing:0.05em; text-transform:uppercase;
+    color: var(--steel); padding:4px 4px; border-bottom: 1px solid var(--line);
+  }
+  table.stats-table th:first-child, table.stats-table td:first-child{ text-align:left; }
+  table.stats-table td{
+    padding:3px 4px; text-align:right; font-family:"SF Mono","Courier New",monospace; font-size:11.5px;
+  }
+  table.stats-table td:first-child{ font-family:inherit; font-weight:600; color:var(--chalk); font-size:12px; }
+  table.stats-table tr:nth-child(even) td{ background: rgba(255,255,255,0.025); }
+  table.stats-table .stat-pct{ color:var(--steel); font-size:10px; }
   .neg-money{ color: var(--crimson); }
 
   /* Schedule tab */
@@ -326,12 +341,14 @@
     <button class="display active" data-view="standings">Standings</button>
     <button class="display" data-view="rosters">Rosters</button>
     <button class="display" data-view="schedule">Schedule</button>
+    <button class="display" data-view="stats">Stats</button>
     <button class="display" data-view="rules">Rules</button>
   </div>
 
   <div id="standingsView"></div>
   <div id="rostersView" style="display:none;"></div>
   <div id="scheduleView" style="display:none;"></div>
+  <div id="statsView" style="display:none;"></div>
   <div id="rulesView" style="display:none;"></div>
 
   <div class="footer-note">Scores are saved automatically and shared with anyone using this app.</div>
@@ -408,6 +425,9 @@ let weekManuallySelected = false; // once the user picks a week from the dropdow
 let weeklyStandingsWeek = 0; // independent week selector for the Weekly Standings table on the Standings tab
 let weeklyStandingsManuallySelected = false;
 let scheduleTeamFilter = "ALL"; // "ALL" or a person's name -- filters the Schedule tab to one coach's 14 teams
+let draftRecapFilter = "ALL";
+let draftRecapSortCol = "globalPick";
+let draftRecapSortDir = "asc";
 
 // Commissioner gate for the Rosters tab. Change this PIN to whatever you like.
 const COMMISSIONER_PIN = "gridiron26";
@@ -638,7 +658,71 @@ function personScore(person){
   return total;
 }
 
-// --- Weekly Standings / Weekly Winner -------------------------------------------------
+// --- Draft-round stats (Stats tab) -------------------------------------------------------
+// Points per draft round (index 0 = Round 1 ... index 13 = Round 14) for one coach. Not
+// displayed directly -- used to build the Early/Middle/Late buckets below.
+function personRoundPoints(person){
+  return DRAFT[person].map((team, idx)=> teamScore(person, idx));
+}
+
+// Round 1-4 = Early, Round 5-9 = Middle, Round 10-14 = Late (0-indexed: 0-3, 4-8, 9-13).
+function personRoundBuckets(person){
+  const rounds = personRoundPoints(person);
+  const early = rounds.slice(0,4).reduce((a,b)=>a+b,0);
+  const middle = rounds.slice(4,9).reduce((a,b)=>a+b,0);
+  const late = rounds.slice(9,14).reduce((a,b)=>a+b,0);
+  return { early, middle, late, total: early+middle+late };
+}
+
+// --- Draft Recap ---------------------------------------------------------------------
+// Full snake-draft order: odd rounds go Kneidel -> ... -> Henley; even rounds reverse
+// (Henley -> ... -> Kneidel). This is the actual pick order, confirmed by the Commissioner.
+const DRAFT_ORDER_ROUND1 = ["Kneidel","Karcher","Greckel","DeFreese","Clack","Eber","Williamson","Stubel","Olvaney","Henley"];
+const DRAFT_ORDER_ROUND1_REV = [...DRAFT_ORDER_ROUND1].reverse();
+function coachForPick(round, pickInRound){ // both 1-indexed
+  return (round % 2 === 1 ? DRAFT_ORDER_ROUND1 : DRAFT_ORDER_ROUND1_REV)[pickInRound - 1];
+}
+
+// Every one of the 140 picks, in actual snake-draft order, each with its season points.
+function buildDraftPicks(){
+  const picks = [];
+  for(let r=1; r<=14; r++){
+    for(let p=1; p<=10; p++){
+      const coach = coachForPick(r, p);
+      const team = DRAFT[coach][r-1];
+      const points = teamScore(coach, r-1);
+      picks.push({ round:r, pickInRound:p, globalPick:(r-1)*10+p, coach, team, points });
+    }
+  }
+  return picks;
+}
+
+// Computes Finish Rank, Best Available, Pick Grade, and Weighted Grade for every pick.
+function computeDraftRecap(){
+  const picks = buildDraftPicks();
+
+  const byPointsDesc = [...picks].sort((a,b)=> b.points - a.points);
+  const finishRank = new Map();
+  byPointsDesc.forEach((p, i)=> finishRank.set(p, i+1));
+
+  return picks.map((pick, i)=>{
+    const available = picks.slice(i); // not yet drafted before this pick -- includes this pick itself
+    const avgAvailable = available.reduce((s,p)=>s+p.points,0) / available.length;
+    const best = available.reduce((b,p)=> p.points > b.points ? p : b, available[0]);
+    const draftValue = pick.points - avgAvailable;
+    const weightedGrade = draftValue * (15 - pick.round) / 14;
+    const rank = finishRank.get(pick);
+    return {
+      ...pick,
+      finishRank: rank,
+      bestAvailable: best.team,
+      bestAvailableCoach: best.coach,
+      bestAvailablePoints: best.points,
+      pickGrade: pick.globalPick - rank,
+      weightedGrade,
+    };
+  });
+}
 
 // Points a person's teams earned in one specific week (sum of that week's slotPoints; games
 // not final yet contribute 0, same as a BYE).
@@ -1416,6 +1500,146 @@ function renderSchedule(){
   });
 }
 
+function renderStats(){
+  const el = document.getElementById('statsView');
+  let html = '';
+
+  // ---- Early / Middle / Late Round Points ----------------------------------------------
+  const rows = PEOPLE.map(person=>{
+    const b = personRoundBuckets(person);
+    return { person, ...b };
+  }).sort((a,b)=> b.total - a.total);
+
+  const pctStr = (part, total)=>{
+    if(!total) return '0%';
+    return Math.round((part/total)*100) + '%';
+  };
+  const fmtCell = (pts, total)=>{
+    const sign = pts>0 ? '+' : '';
+    return `${sign}${pts} <span class="stat-pct">(${pctStr(pts, total)})</span>`;
+  };
+
+  html += `<div class="sub-table-wrap" style="margin-top:0;">
+    <div class="sub-table-head display">Points by Draft Round</div>
+    <table class="stats-table"><thead><tr>
+      <th>Coach</th><th>Early<br>(R1-4)</th><th>Middle<br>(R5-9)</th><th>Late<br>(R10-14)</th>
+    </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    html += `<tr>
+      <td>${r.person}</td>
+      <td>${fmtCell(r.early, r.total)}</td>
+      <td>${fmtCell(r.middle, r.total)}</td>
+      <td>${fmtCell(r.late, r.total)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+    <div style="font-size:10px; color:var(--steel); margin-top:6px;">Percentages are each bucket's share of that coach's total season points.</div>
+  </div>`;
+
+  // ---- Draft Recap -----------------------------------------------------------------------
+  const recap = computeDraftRecap();
+
+  // Coach summary: cumulative Weighted Grade across all 14 of their picks -- "who had the best draft"
+  const coachSummary = PEOPLE.map(person=>{
+    const mine = recap.filter(r=>r.coach===person);
+    const totalWeighted = mine.reduce((s,r)=>s+r.weightedGrade, 0);
+    const totalPickGrade = mine.reduce((s,r)=>s+r.pickGrade, 0);
+    return { person, totalWeighted, avgWeighted: totalWeighted/mine.length, totalPickGrade };
+  }).sort((a,b)=> b.totalWeighted - a.totalWeighted);
+  const summaryMax = Math.max(1, ...coachSummary.map(c=>Math.abs(c.totalWeighted)));
+
+  html += `<div class="sub-table-wrap">
+    <div class="sub-table-head display">Draft Recap — Best Draft by Coach</div>
+    <div class="scoreboard" style="padding:10px 14px;">`;
+  coachSummary.forEach((c,i)=>{
+    const pct = Math.max(3, Math.round((Math.abs(c.totalWeighted)/summaryMax)*100));
+    html += `
+      <div class="rank-row compact">
+        <div class="rank-num mono">${i+1}</div>
+        <div>
+          <div class="rank-name-row">
+            <div class="rank-name">${c.person}</div>
+            <div class="rank-score mono" style="${c.totalWeighted>=0?'':'color:var(--crimson);'}">${c.totalWeighted>=0?'+':''}${c.totalWeighted.toFixed(1)}</div>
+          </div>
+          <div class="rank-sub">Avg ${c.avgWeighted>=0?'+':''}${c.avgWeighted.toFixed(2)}/pick · Pick Grade total ${c.totalPickGrade>=0?'+':''}${c.totalPickGrade}</div>
+          <div class="track"><div class="track-fill" style="width:${pct}%; ${c.totalWeighted<0?'background:var(--crimson);':''}"></div></div>
+        </div>
+        <div></div>
+      </div>`;
+  });
+  html += `</div>
+    <div style="font-size:10px; color:var(--steel); margin-top:6px;">Sum of Weighted Grade (see below) across all 14 picks. Higher = better draft overall.</div>
+  </div>`;
+
+  // Pick-by-pick detail table
+  const SORT_KEYS = {
+    round:'round', pick:'globalPick', coach:'coach', team:'team', pts:'points',
+    fin:'finishRank', grade:'pickGrade', wtd:'weightedGrade'
+  };
+  let recapRows = draftRecapFilter==='ALL' ? recap : recap.filter(r=>r.coach===draftRecapFilter);
+  const sortKey = SORT_KEYS[draftRecapSortCol] || draftRecapSortCol;
+  recapRows = [...recapRows].sort((a,b)=>{
+    let av=a[sortKey], bv=b[sortKey];
+    if(typeof av === 'string') return draftRecapSortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    return draftRecapSortDir==='asc' ? av-bv : bv-av;
+  });
+
+  html += `<div class="sub-table-wrap">
+    <div class="sub-table-head display">Draft Recap — Every Pick</div>
+    <select class="sched-week-select" id="draftRecapFilterSelect">
+      <option value="ALL" ${draftRecapFilter==='ALL'?'selected':''}>All Coaches</option>`;
+  PEOPLE.forEach(p=>{ html += `<option value="${p}" ${draftRecapFilter===p?'selected':''}>${p}</option>`; });
+  html += `</select>
+    <div class="table-scroll">
+      <table class="data-table" style="font-size:11px;"><thead><tr>
+        <th data-sort="round">RD</th><th data-sort="pick" class="num">Pick</th><th data-sort="coach">Coach</th>
+        <th data-sort="team">Team</th><th data-sort="pts" class="num">Pts</th><th data-sort="fin" class="num">Fin#</th>
+        <th>Best Available</th><th data-sort="grade" class="num">Grade</th><th data-sort="wtd" class="num">Wtd</th>
+      </tr></thead><tbody>`;
+  recapRows.forEach(r=>{
+    html += `<tr>
+      <td>${r.round}</td>
+      <td class="num mono">${r.globalPick}</td>
+      <td>${r.coach}</td>
+      <td>${r.team}</td>
+      <td class="num mono">${r.points}</td>
+      <td class="num mono">${r.finishRank}</td>
+      <td style="color:var(--steel);">${r.bestAvailable===r.team ? '—' : `${r.bestAvailable} (${r.bestAvailableCoach})`}</td>
+      <td class="num mono ${r.pickGrade>0?'pos':(r.pickGrade<0?'neg-money':'')}">${r.pickGrade>0?'+':''}${r.pickGrade}</td>
+      <td class="num mono ${r.weightedGrade>0?'pos':(r.weightedGrade<0?'neg-money':'')}">${r.weightedGrade>0?'+':''}${r.weightedGrade.toFixed(2)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table></div>
+    <div style="font-size:10px; color:var(--steel); margin-top:6px;">
+      Fin# = rank of this team's season points among all 140 drafted teams (1 = best). Best Available = highest-scoring team still undrafted at that exact pick.
+      Grade = Pick − Fin# (steal if positive, bust if negative). Wtd = (points − average of everyone still available) × round weight (Round 1 = full weight, Round 14 = light weight). Tap a column header to sort.
+    </div>
+  </div>`;
+
+  el.innerHTML = html;
+
+  const draftRecapFilterSelect = document.getElementById('draftRecapFilterSelect');
+  if(draftRecapFilterSelect) draftRecapFilterSelect.addEventListener('change', ()=>{
+    draftRecapFilter = draftRecapFilterSelect.value;
+    renderStats();
+  });
+
+  el.querySelectorAll('th[data-sort]').forEach(th=>{
+    th.style.cursor = 'pointer';
+    th.addEventListener('click', ()=>{
+      const col = th.dataset.sort;
+      if(draftRecapSortCol === col){
+        draftRecapSortDir = draftRecapSortDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        draftRecapSortCol = col;
+        draftRecapSortDir = 'asc';
+      }
+      renderStats();
+    });
+  });
+}
+
+
 function renderRules(){
   const el = document.getElementById('rulesView');
   let html = '<div class="scoreboard" style="padding:18px 22px;">';
@@ -1441,10 +1665,12 @@ function switchView(view){
   document.getElementById('standingsView').style.display = view==='standings' ? '' : 'none';
   document.getElementById('rostersView').style.display = view==='rosters' ? '' : 'none';
   document.getElementById('scheduleView').style.display = view==='schedule' ? '' : 'none';
+  document.getElementById('statsView').style.display = view==='stats' ? '' : 'none';
   document.getElementById('rulesView').style.display = view==='rules' ? '' : 'none';
   if(view==='standings') renderStandings();
   if(view==='rosters') renderRosters();
   if(view==='schedule') renderSchedule();
+  if(view==='stats') renderStats();
   if(view==='rules') renderRules();
 }
 
