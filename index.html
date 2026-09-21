@@ -1372,11 +1372,12 @@ function renderSchedule(){
       }
 
       const others = findMatchup(person, i, slot.opp);
-      let oppClass = '', oppPrefix = '';
+      let oppClass = '', oppPrefix = '', oppRoundSuffix = '';
       if(others){
         const selfMatch = others.some(o=>o.person===person);
         oppClass = selfMatch ? 'self' : 'matchup';
         oppPrefix = selfMatch ? `${others[0].person} (self) — ` : `${others[0].person} — `;
+        oppRoundSuffix = ` (R${others[0].idx + 1})`; // round the opponent's coach drafted them in
       } else if(slot.fcs){
         oppClass = 'undrafted';
       }
@@ -1392,7 +1393,7 @@ function renderSchedule(){
       html += `<div class="sched-row" data-idx="${i}">
         <div class="sched-row-main">
           <div class="sched-team">${team}</div>
-          <div class="sched-opp-text ${oppClass}">${oppPrefix}vs ${slot.opp}${scoreSuffix}</div>
+          <div class="sched-opp-text ${oppClass}">${oppPrefix}vs ${slot.opp}${oppRoundSuffix}${scoreSuffix}</div>
         </div>
         ${resultBadge}
       </div>`;
