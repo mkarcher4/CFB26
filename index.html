@@ -131,6 +131,18 @@
     margin-top:14px; padding-top:8px; border-top:1px dashed var(--line);
   }
 
+  /* Compact rank-row variant for Team Season Points -- same layout as the main Standings
+     leaderboard (rank number, name/score row, progress bar) but sized down since this list
+     can run up to 140 rows, plus a small muted coach line under the team name. */
+  .rank-row.compact{ grid-template-columns:22px 1fr auto; gap:10px; padding:7px 0; cursor:default; }
+  .rank-row.compact .rank-num{ font-size:12px; }
+  .rank-row.compact:nth-child(1) .rank-num{ font-size:12px; }
+  .rank-row.compact .rank-name-row{ margin-bottom:3px; }
+  .rank-row.compact .rank-name{ font-size:12.5px; font-weight:600; letter-spacing:normal; text-transform:none; font-family:inherit; }
+  .rank-row.compact .rank-score{ font-size:12px; }
+  .rank-row.compact .rank-sub{ font-size:10px; color:var(--steel); margin-top:-2px; margin-bottom:3px; }
+  .rank-row.compact .track{ height:4px; }
+
   /* Person tabs (roster view) */
   .jersey-row{
     display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px;
@@ -1165,22 +1177,36 @@ function renderRosters(){
     html += `<div style="font-size:11px; color:var(--steel); margin:-6px 0 14px;">Edits here only apply in your browser until you download manual.json and commit it to the repo -- that's what publishes the change for everyone else.</div>`;
   }
 
-  // ---- Team Season Points (every drafted team-slot, ranked) -- moved here from Schedule ----
+  // ---- Team Season Points (filtered to the selected coach, or all if "All Coaches") ----
   const teamRanked = [];
-  PEOPLE.forEach(person=>{
+  const teamPointsPeople = currentPerson === 'ALL' ? PEOPLE : [currentPerson];
+  teamPointsPeople.forEach(person=>{
     DRAFT[person].forEach((team, idx)=>{
       teamRanked.push({ person, team, score: teamScore(person, idx) });
     });
   });
   teamRanked.sort((a,b)=> b.score - a.score);
+  const teamPtsMax = Math.max(1, ...teamRanked.map(t=>Math.abs(t.score)));
   html += `<div class="sub-table-wrap" style="margin-top:0;">
     <div class="sub-table-head display">Team Season Points</div>
-    <div class="table-scroll" style="max-height:340px; overflow-y:auto;">
-      <table class="data-table"><thead><tr><th>Rank</th><th>Team</th><th>Coach</th><th class="num">Points</th></tr></thead><tbody>`;
+    <div class="scoreboard" style="padding:10px 14px; max-height:360px; overflow-y:auto;">`;
   teamRanked.forEach((t, i)=>{
-    html += `<tr><td class="mono">${i+1}</td><td>${t.team}</td><td style="color:var(--steel);">${t.person}</td><td class="num mono ${t.score>0?'pos':(t.score<0?'neg-money':'')}">${t.score>0?'+':''}${t.score}</td></tr>`;
+    const pct = Math.max(3, Math.round((Math.abs(t.score)/teamPtsMax)*100));
+    html += `
+      <div class="rank-row compact">
+        <div class="rank-num mono">${i+1}</div>
+        <div>
+          <div class="rank-name-row">
+            <div class="rank-name">${t.team}</div>
+            <div class="rank-score mono ${t.score>0?'pos':(t.score<0?'neg-money':'')}" style="${t.score>0?'':'color:var(--chalk-dim);'}">${t.score>0?'+':''}${t.score}</div>
+          </div>
+          <div class="rank-sub">${t.person}</div>
+          <div class="track"><div class="track-fill" style="width:${pct}%;"></div></div>
+        </div>
+        <div></div>
+      </div>`;
   });
-  html += `</tbody></table></div></div>`;
+  html += `</div></div>`;
 
   if(currentPerson === 'ALL'){
     PEOPLE.forEach(person=>{
