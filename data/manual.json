@@ -360,7 +360,7 @@
    "cfpNattyWin": false
   },
   {
-   "hcFired": false,
+   "hcFired": true,
    "bowlEligible": false,
    "bowlAppearance": false,
    "heisman": false,
