@@ -1,14 +1,6 @@
 {
- "updated_at": "2026-10-21T15:44:24.201156+00:00",
+ "updated_at": "2026-10-28T16:57:10.148540+00:00",
  "changed_weeks": [
-  "Week 0",
-  "Week 1",
-  "Week 2",
-  "Week 3",
-  "Week 4",
-  "Week 5",
-  "Week 6",
-  "Week 7",
   "Week 8",
   "Week 9",
   "Week 10",
@@ -178,8 +170,8 @@
     {
      "opp": "Arizona St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "17-28"
     },
     {
      "opp": "Colorado",
@@ -490,8 +482,8 @@
     {
      "opp": "LSU",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "17-38"
     },
     {
      "opp": "Ole Miss",
@@ -594,8 +586,8 @@
     {
      "opp": "Michigan St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "28-10"
     },
     {
      "opp": "Nevada",
@@ -802,8 +794,8 @@
     {
      "opp": "Baylor",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "25-24"
     },
     {
      "opp": "TCU",
@@ -906,8 +898,8 @@
     {
      "opp": "Kentucky",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "17-34"
     },
     {
      "opp": "",
@@ -1114,8 +1106,8 @@
     {
      "opp": "UCLA",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "10-28"
     },
     {
      "opp": "",
@@ -1218,8 +1210,8 @@
     {
      "opp": "San Jos\u00e9 St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "28-13"
     },
     {
      "opp": "UCLA",
@@ -1322,8 +1314,8 @@
     {
      "opp": "Sam Houston",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "30-24"
     },
     {
      "opp": "Jax State",
@@ -1426,8 +1418,8 @@
     {
      "opp": "UConn",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "16-35"
     },
     {
      "opp": "",
@@ -1532,8 +1524,8 @@
     {
      "opp": "Michigan",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "13-6"
     },
     {
      "opp": "Minnesota",
@@ -1636,8 +1628,8 @@
     {
      "opp": "California",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "59-20"
     },
     {
      "opp": "Syracuse",
@@ -1740,8 +1732,8 @@
     {
      "opp": "Wisconsin",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "7-24"
     },
     {
      "opp": "Ohio State",
@@ -1844,8 +1836,8 @@
     {
      "opp": "Tulsa",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "38-35"
     },
     {
      "opp": "Memphis",
@@ -1948,8 +1940,8 @@
     {
      "opp": "Tennessee",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "27-24"
     },
     {
      "opp": "Oklahoma",
@@ -2052,8 +2044,8 @@
     {
      "opp": "Kansas St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "28-17"
     },
     {
      "opp": "BYU",
@@ -2156,8 +2148,8 @@
     {
      "opp": "West Virginia",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-24"
     },
     {
      "opp": "Kansas",
@@ -2364,8 +2356,8 @@
     {
      "opp": "E Michigan",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-20"
     },
     {
      "opp": "",
@@ -2468,8 +2460,8 @@
     {
      "opp": "Oklahoma St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-57"
     },
     {
      "opp": "Kansas St",
@@ -2676,8 +2668,8 @@
     {
      "opp": "Georgia Tech",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "49-27"
     },
     {
      "opp": "Duke",
@@ -2780,8 +2772,8 @@
     {
      "opp": "Nevada",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "13-28"
     },
     {
      "opp": "New Mexico",
@@ -2990,8 +2982,8 @@
     {
      "opp": "Illinois",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "10-21"
     },
     {
      "opp": "Northwestern",
@@ -3094,8 +3086,8 @@
     {
      "opp": "Indiana",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "6-13"
     },
     {
      "opp": "Rutgers",
@@ -3198,8 +3190,8 @@
     {
      "opp": "Utah",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "13-21"
     },
     {
      "opp": "",
@@ -3302,8 +3294,8 @@
     {
      "opp": "South Carolina",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-27"
     },
     {
      "opp": "",
@@ -3406,8 +3398,8 @@
     {
      "opp": "UTSA",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "19-42"
     },
     {
      "opp": "Charlotte",
@@ -3510,8 +3502,8 @@
     {
      "opp": "Stanford",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "28-31"
     },
     {
      "opp": "California",
@@ -3822,8 +3814,8 @@
     {
      "opp": "USC",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-7"
     },
     {
      "opp": "Iowa",
@@ -3926,8 +3918,8 @@
     {
      "opp": "UMass",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "35-16"
     },
     {
      "opp": "Air Force",
@@ -4030,8 +4022,8 @@
     {
      "opp": "Navy",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "49-39"
     },
     {
      "opp": "FAU",
@@ -4134,8 +4126,8 @@
     {
      "opp": "Northwestern",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "14-42"
     },
     {
      "opp": "Michigan",
@@ -4244,8 +4236,8 @@
     {
      "opp": "Sam Houston",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-3"
     },
     {
      "opp": "FIU",
@@ -4656,8 +4648,8 @@
     {
      "opp": "Washington St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-10"
     },
     {
      "opp": "Texas St",
@@ -4760,8 +4752,8 @@
     {
      "opp": "Miami",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "23-52"
     },
     {
      "opp": "Georgia Tech",
@@ -4864,8 +4856,8 @@
     {
      "opp": "Colorado",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "57-24"
     },
     {
      "opp": "Iowa State",
@@ -4968,8 +4960,8 @@
     {
      "opp": "Duke",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "16-19"
     },
     {
      "opp": "Wake Forest",
@@ -5078,8 +5070,8 @@
     {
      "opp": "Delaware",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "21-35"
     },
     {
      "opp": "MTSU",
@@ -5176,8 +5168,8 @@
     {
      "opp": "Kansas",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-25"
     },
     {
      "opp": "UCF",
@@ -5280,8 +5272,8 @@
     {
      "opp": "Bowling Green",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-24"
     },
     {
      "opp": "",
@@ -5384,8 +5376,8 @@
     {
      "opp": "Old Dominion",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "26-0"
     },
     {
      "opp": "South Alabama",
@@ -5488,8 +5480,8 @@
     {
      "opp": "Buffalo",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-31"
     },
     {
      "opp": "W Michigan",
@@ -5592,8 +5584,8 @@
     {
      "opp": "Sacramento St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "34-17"
     },
     {
      "opp": "",
@@ -5696,8 +5688,8 @@
     {
      "opp": "Ball State",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "17-34"
     },
     {
      "opp": "Kent State",
@@ -5800,8 +5792,8 @@
     {
      "opp": "UConn",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "16-35"
     },
     {
      "opp": "",
@@ -5906,8 +5898,8 @@
     {
      "opp": "Ole Miss",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "34-27"
     },
     {
      "opp": "Mississippi St",
@@ -6010,8 +6002,8 @@
     {
      "opp": "Kennesaw St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "34-6"
     },
     {
      "opp": "FIU",
@@ -6114,8 +6106,8 @@
     {
      "opp": "Houston",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "21-13"
     },
     {
      "opp": "Cincinnati",
@@ -6218,8 +6210,8 @@
     {
      "opp": "Wyoming",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "14-28"
     },
     {
      "opp": "UConn",
@@ -6322,8 +6314,8 @@
     {
      "opp": "Southern Miss",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-35"
     },
     {
      "opp": "",
@@ -6426,8 +6418,8 @@
     {
      "opp": "Miami OH",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "27-28"
     },
     {
      "opp": "",
@@ -6634,8 +6626,8 @@
     {
      "opp": "Utah State",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-17"
     },
     {
      "opp": "Boise St",
@@ -6738,8 +6730,8 @@
     {
      "opp": "UL Monroe",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "14-21"
     },
     {
      "opp": "James Madison",
@@ -6842,8 +6834,8 @@
     {
      "opp": "Air Force",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "28-14"
     },
     {
      "opp": "",
@@ -6946,8 +6938,8 @@
     {
      "opp": "Syracuse",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "30-31"
     },
     {
      "opp": "Miami",
@@ -7050,8 +7042,8 @@
     {
      "opp": "Texas St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "17-20"
     },
     {
      "opp": "Colorado St",
@@ -7154,8 +7146,8 @@
     {
      "opp": "Louisiana",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "35-31"
     },
     {
      "opp": "UL Monroe",
@@ -7364,8 +7356,8 @@
     {
      "opp": "Pitt",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "52-23"
     },
     {
      "opp": "North Carolina",
@@ -7468,8 +7460,8 @@
     {
      "opp": "Texas A&M",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-20"
     },
     {
      "opp": "",
@@ -7676,8 +7668,8 @@
     {
      "opp": "C Michigan",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "28-27"
     },
     {
      "opp": "",
@@ -7780,8 +7772,8 @@
     {
      "opp": "W Michigan",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "45-38"
     },
     {
      "opp": "",
@@ -7884,8 +7876,8 @@
     {
      "opp": "N Illinois",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "56-21"
     },
     {
      "opp": "",
@@ -7988,8 +7980,8 @@
     {
      "opp": "Louisiana Tech",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "0-26"
     },
     {
      "opp": "Marshall",
@@ -8300,8 +8292,8 @@
     {
      "opp": "BYU",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "39-31"
     },
     {
      "opp": "Baylor",
@@ -8404,8 +8396,8 @@
     {
      "opp": "Rice",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "51-49"
     },
     {
      "opp": "North Texas",
@@ -8716,8 +8708,8 @@
     {
      "opp": "FAU",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "49-51"
     },
     {
      "opp": "",
@@ -8926,8 +8918,8 @@
     {
      "opp": "Auburn",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "38-17"
     },
     {
      "opp": "",
@@ -9030,8 +9022,8 @@
     {
      "opp": "Mississippi St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "23-15"
     },
     {
      "opp": "South Carolina",
@@ -9134,8 +9126,8 @@
     {
      "opp": "East Carolina",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "41-34"
     },
     {
      "opp": "Army",
@@ -9342,8 +9334,8 @@
     {
      "opp": "Oregon",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "21-10"
     },
     {
      "opp": "Maryland",
@@ -9452,8 +9444,8 @@
     {
      "opp": "Western KY",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "35-21"
     },
     {
      "opp": "Kennesaw St",
@@ -9550,8 +9542,8 @@
     {
      "opp": "Georgia St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "38-32"
     },
     {
      "opp": "",
@@ -9654,8 +9646,8 @@
     {
      "opp": "TCU",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-20"
     },
     {
      "opp": "",
@@ -9758,8 +9750,8 @@
     {
      "opp": "Texas Tech",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "37-24"
     },
     {
      "opp": "Utah",
@@ -9862,8 +9854,8 @@
     {
      "opp": "Ohio",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-24"
     },
     {
      "opp": "",
@@ -9966,8 +9958,8 @@
     {
      "opp": "Oklahoma",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "15-23"
     },
     {
      "opp": "Texas",
@@ -10070,14 +10062,14 @@
     {
      "opp": "New Mexico St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-30"
     },
     {
      "opp": "Missouri St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "3-24"
     },
     {
      "opp": "Jax State",
@@ -10174,8 +10166,8 @@
     {
      "opp": "Troy",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "21-14"
     },
     {
      "opp": "Southern Miss",
@@ -10280,8 +10272,8 @@
     {
      "opp": "Cincinnati",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "24-37"
     },
     {
      "opp": "Arizona",
@@ -10384,8 +10376,8 @@
     {
      "opp": "Texas",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "27-34"
     },
     {
      "opp": "Auburn",
@@ -10488,8 +10480,8 @@
     {
      "opp": "Minnesota",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "10-13"
     },
     {
      "opp": "Wisconsin",
@@ -10592,8 +10584,8 @@
     {
      "opp": "Tulane",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "42-19"
     },
     {
      "opp": "",
@@ -10904,8 +10896,8 @@
     {
      "opp": "Colorado St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "49-56"
     },
     {
      "opp": "Washington St",
@@ -11112,8 +11104,8 @@
     {
      "opp": "Vanderbilt",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "34-17"
     },
     {
      "opp": "",
@@ -11320,8 +11312,8 @@
     {
      "opp": "Kent State",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-35"
     },
     {
      "opp": "",
@@ -11424,8 +11416,8 @@
     {
      "opp": "Arkansas St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "32-38"
     },
     {
      "opp": "Coastal",
@@ -11528,8 +11520,8 @@
     {
      "opp": "San Diego St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "56-49"
     },
     {
      "opp": "Utah State",
@@ -11632,8 +11624,8 @@
     {
      "opp": "Hawai'i",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "21-56"
     },
     {
      "opp": "UNLV",
@@ -11738,8 +11730,8 @@
     {
      "opp": "UCF",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-39"
     },
     {
      "opp": "Arizona St",
@@ -11842,8 +11834,8 @@
     {
      "opp": "Alabama",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-31"
     },
     {
      "opp": "",
@@ -11946,8 +11938,8 @@
     {
      "opp": "SMU",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-59"
     },
     {
      "opp": "NC State",
@@ -12050,8 +12042,8 @@
     {
      "opp": "Virginia Tech",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "16-20"
     },
     {
      "opp": "Florida St",
@@ -12154,8 +12146,8 @@
     {
      "opp": "Iowa State",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "39-3"
     },
     {
      "opp": "Texas Tech",
@@ -12258,8 +12250,8 @@
     {
      "opp": "Boston College",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "27-49"
     },
     {
      "opp": "Pitt",
@@ -12362,8 +12354,8 @@
     {
      "opp": "Clemson",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "20-16"
     },
     {
      "opp": "",
@@ -12466,8 +12458,8 @@
     {
      "opp": "Iowa",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "13-10"
     },
     {
      "opp": "Indiana",
@@ -12570,8 +12562,8 @@
     {
      "opp": "North Carolina",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-30"
     },
     {
      "opp": "SMU",
@@ -12674,8 +12666,8 @@
     {
      "opp": "Army",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "35-38"
     },
     {
      "opp": "",
@@ -12778,8 +12770,8 @@
     {
      "opp": "Rutgers",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "42-14"
     },
     {
      "opp": "Oregon",
@@ -12986,8 +12978,8 @@
     {
      "opp": "NC State",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-28"
     },
     {
      "opp": "Louisville",
@@ -13090,8 +13082,8 @@
     {
      "opp": "Akron",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "35-20"
     },
     {
      "opp": "Sacramento St",
@@ -13196,8 +13188,8 @@
     {
      "opp": "New Mexico",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "16-21"
     },
     {
      "opp": "UTEP",
@@ -13300,8 +13292,8 @@
     {
      "opp": "App State",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "31-34"
     },
     {
      "opp": "Troy",
@@ -13404,8 +13396,8 @@
     {
      "opp": "Toledo",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "38-45"
     },
     {
      "opp": "Bowling Green",
@@ -13508,8 +13500,8 @@
     {
      "opp": "North Texas",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "39-49"
     },
     {
      "opp": "Notre Dame",
@@ -13612,8 +13604,8 @@
     {
      "opp": "Memphis",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "34-41"
     },
     {
      "opp": "Temple",
@@ -13716,8 +13708,8 @@
     {
      "opp": "N Dakota St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "21-16"
     },
     {
      "opp": "San Jos\u00e9 St",
@@ -13820,8 +13812,8 @@
     {
      "opp": "Liberty",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "6-34"
     },
     {
      "opp": "MTSU",
@@ -13924,8 +13916,8 @@
     {
      "opp": "James Madison",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "34-31"
     },
     {
      "opp": "GA Southern",
@@ -14028,8 +14020,8 @@
     {
      "opp": "Virginia",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "19-16"
     },
     {
      "opp": "Boston College",
@@ -14236,8 +14228,8 @@
     {
      "opp": "Arizona",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "3-39"
     },
     {
      "opp": "Oklahoma St",
@@ -14340,8 +14332,8 @@
     {
      "opp": "Boise St",
      "fcs": false,
-     "status": "Scheduled",
-     "score": ""
+     "status": "Final",
+     "score": "10-31"
     },
     {
      "opp": "San Diego St",
