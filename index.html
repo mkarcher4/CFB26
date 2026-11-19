@@ -1045,17 +1045,24 @@ async function load(){
   weeklyStandingsWeek = computeCurrentWeekDefault();
 }
 
-// "Current week" defaults to the most advanced week that has any data at all -- i.e. the
-// furthest-along week someone has actually played, which is the one people care about by
-// default. Only used before the user has picked a week themselves.
+// "Current week" defaults to the week in progress: the latest week with a final game, or the next
+// week once that one is fully final. Only used before the user has picked a week themselves.
 function computeCurrentWeekDefault(){
-  let best = 0;
-  for(let wi=0; wi<WEEKS.length; wi++){
-    let hasData = false;
-    for(const p of PEOPLE){ for(let i=0;i<14;i++){ if(schedState[p][i][wi].opp){ hasData = true; break; } } if(hasData) break; }
-    if(hasData) best = wi;
+  const weekHas = (wi, test) => {
+    for(const p of PEOPLE){ for(let i=0;i<14;i++){ const s = schedState[p][i][wi]; if(s.opp && test(s)) return true; } }
+    return false;
+  };
+  // Furthest week with at least one final game (future weeks are pre-filled with scheduled
+  // opponents, so "has data" alone would jump to the end of the season).
+  let lastPlayed = -1;
+  for(let wi=0; wi<WEEKS.length; wi++){ if(weekHas(wi, s => s.status === "Final")) lastPlayed = wi; }
+  if(lastPlayed < 0){
+    for(let wi=0; wi<WEEKS.length; wi++){ if(weekHas(wi, () => true)){ return wi; } }
+    return 0;
   }
-  return best;
+  // Once every game that week is final, the next week is the current one.
+  if(isWeekComplete(lastPlayed) && lastPlayed + 1 < WEEKS.length && weekHas(lastPlayed + 1, () => true)) return lastPlayed + 1;
+  return lastPlayed;
 }
 
 function liveSyncStatusText(){
